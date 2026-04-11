@@ -1,0 +1,59 @@
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Reference symlinks (local development only)
+.references/
+
+# Build artifacts
+build/
+dist/
+target/
+DerivedData/
+*.o
+*.a
+*.dSYM
+
+# Rust
+Cargo.lock
+.cargo/
+
+# Swift / Xcode
+*.xcuserdata
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Node (plugin tooling)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+
+# moai-cli runtime state
+.moai/cache/
+.moai/logs/
+.moai/state/
+.moai/reports/
+.moai/manifest.json
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+*.tmp
+*.bak
+*.log
+
+# Test artifacts
+coverage/
+*.profraw
+*.profdata
