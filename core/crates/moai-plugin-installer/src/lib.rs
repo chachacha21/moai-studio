@@ -5,6 +5,12 @@
 // @MX:ANCHOR: PluginInstaller 공개 API — 플러그인 설치/제거의 진입점
 // @MX:REASON: 외부 바이너리와 통합 테스트에서 직접 호출하는 공개 인터페이스
 
+pub mod installer;
+pub mod verify;
+
+pub use installer::{BundleError, InstallOutcome, install_or_update};
+pub use verify::{VerifyError, verify_plugin};
+
 use std::path::PathBuf;
 
 use thiserror::Error;
