@@ -14,9 +14,9 @@
 | **RG-1** | Claude CLI stream-json | **GO** ✅ | NDJSON 포맷, 13개 메시지 타입 문서화 완료 |
 | **RG-2** | IDE MCP Server 자동 연결 | **NO-GO** ⚠️ → **Fallback GO** | lockfile WS 패턴 실패, `--mcp-config` SSE 패턴 성공 |
 | **RG-3** | Plugin http hook type | **GO** ✅ | PreToolUse 수신 + updatedInput 반영 확인 |
-| **RG-4** | GhosttyKit xcframework | **조건부 GO** ⚠️ | Zig 0.15.2 설치 성공, Ghostty clone 성공, Metal Toolchain 누락으로 빌드 미완 |
+| **RG-4** | GhosttyKit xcframework | **GO** ✅ | Zig 0.15.2, Metal Toolchain, `ghostty-vt.xcframework` 33MB 빌드 성공 (2026-04-12) |
 
-**종합: GO (아키텍처 변경 필요 + RG-4 Xcode 환경 수정 후 재검증)**
+**종합: 전체 GO** (아키텍처 변경 반영 완료, RG-4 완전 검증)
 
 ### RG-4 상세 (2026-04-12 추가)
 
