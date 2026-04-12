@@ -130,3 +130,4 @@ coverage.json
 node_modules/
 .next/
 out/
+app/.build/

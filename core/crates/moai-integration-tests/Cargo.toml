@@ -1,0 +1,25 @@
+[package]
+name = "moai-integration-tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+# 이 크레이트는 순수 통합 테스트용이므로 배포 대상에서 제외
+publish = false
+
+[lib]
+# lib.rs가 없어도 되도록 명시적으로 비활성화
+path = "src/lib.rs"
+
+# 통합 테스트 대상 크레이트들 (dev-dependencies로 참조)
+[dev-dependencies]
+moai-stream-json = { path = "../moai-stream-json" }
+moai-claude-host = { path = "../moai-claude-host" }
+moai-ide-server = { path = "../moai-ide-server" }
+moai-hook-http = { path = "../moai-hook-http" }
+moai-core = { path = "../moai-core" }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "process", "io-util", "time"] }
+tokio-util = "0.7"
+reqwest = { version = "0.12", features = ["json"] }
+serde_json = { workspace = true }
+futures = "0.3"
+bytes = "1"

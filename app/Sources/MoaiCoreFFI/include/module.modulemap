@@ -1,0 +1,4 @@
+module MoaiCoreFFI {
+    header "moai_ffi.h"
+    export *
+}

@@ -5,9 +5,10 @@ edition.workspace = true
 license.workspace = true
 
 [lib]
-# cdylib: Swift가 링크하는 동적 라이브러리
+# staticlib: Swift SPM 링킹용 정적 라이브러리 (.a)
+# cdylib: 동적 라이브러리 (.dylib) — 옵션
 # rlib: cargo test가 사용하는 Rust 라이브러리
-crate-type = ["cdylib", "rlib"]
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 moai-core = { path = "../moai-core" }
