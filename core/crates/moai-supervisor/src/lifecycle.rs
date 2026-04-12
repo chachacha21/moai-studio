@@ -104,9 +104,10 @@ pub async fn create_workspace(
         return Err(e.into());
     }
 
-    // 4. claude-host spawn stub (MS-3 T-012 에서 실 subprocess 로 교체)
-    // @MX:TODO: [AUTO] MS-3 T-012 에서 moai_claude_host::spawn(...) 로 교체.
-    spawn_claude_host_stub(ws_id)?;
+    // 4. claude-host spawn (MS-3 T-012) — claude 바이너리 + ANTHROPIC_API_KEY 존재 시 실 spawn,
+    //    없으면 stub 으로 폴백 (단위 테스트 / CI 환경 대응).
+    // @MX:NOTE: [AUTO] 실제 subprocess 수명 관리는 MS-4 WorkspaceSupervisor 에서 담당.
+    spawn_claude_host_or_stub(ws_id, &req.worktree_path).await?;
 
     // 5. Created -> Starting -> Running 전이
     supervisor
@@ -134,10 +135,51 @@ fn init_worktree(
     Ok(())
 }
 
-// @MX:TODO: [AUTO] MS-3 T-012 에서 실제 Claude subprocess spawn 으로 교체.
-fn spawn_claude_host_stub(_id: WorkspaceId) -> Result<(), LifecycleError> {
-    // 현재는 즉시 성공을 반환하는 스텁.
-    Ok(())
+/// T-012 통합 지점: claude subprocess를 실제로 spawn 하거나 stub 으로 폴백한다.
+///
+/// 실 spawn 조건:
+///   - `which claude` 가 성공
+///   - `ANTHROPIC_API_KEY` 환경 변수 설정
+///
+/// 조건 미충족 시 즉시 Ok(()) 를 반환하여 lifecycle 오케스트레이션을 차단하지 않는다.
+///
+/// @MX:NOTE: [AUTO] subprocess handle 자체는 현재 즉시 drop (shutdown). MS-4에서
+///   WorkspaceSupervisor가 handle을 소유하도록 확장된다.
+async fn spawn_claude_host_or_stub(
+    _id: WorkspaceId,
+    worktree_path: &Path,
+) -> Result<(), LifecycleError> {
+    let claude_available = std::process::Command::new("which")
+        .arg("claude")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    let api_key = std::env::var("ANTHROPIC_API_KEY").unwrap_or_default();
+
+    if !claude_available || api_key.is_empty() {
+        tracing::debug!(
+            "claude-host spawn skipped (claude={claude_available}, api_key_set={})",
+            !api_key.is_empty()
+        );
+        return Ok(());
+    }
+
+    let cfg = moai_claude_host::workspace_config(
+        "claude",
+        api_key,
+        worktree_path.to_path_buf(),
+        None,
+        None,
+    );
+
+    match cfg.spawn().await {
+        Ok(mut proc) => {
+            // MS-4에서 WorkspaceSupervisor에 이관될 때까지 즉시 종료.
+            proc.shutdown().await;
+            Ok(())
+        }
+        Err(e) => Err(LifecycleError::ClaudeHost(format!("{e}"))),
+    }
 }
 
 async fn rollback_store(supervisor: &Arc<RootSupervisor>, id: WorkspaceId) {

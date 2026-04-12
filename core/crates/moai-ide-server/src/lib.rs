@@ -5,4 +5,7 @@
 
 pub mod auth;
 pub mod config;
+pub mod instance;
 pub mod server;
+
+pub use instance::WorkspaceInstance;
