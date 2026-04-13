@@ -20,6 +20,8 @@
 // @MX:NOTE: [AUTO] FFI 표면은 반드시 이 bridge 블록을 통해서만 노출된다.
 
 mod events;
+mod pane;
+mod surface;
 mod workspace;
 
 use once_cell::sync::OnceCell;
@@ -95,6 +97,75 @@ impl RustCore {
     pub fn poll_event(&self, workspace_id: String) -> Option<String> {
         self.workspaces.poll_event(&workspace_id)
     }
+
+    /// UUID 로 워크스페이스의 DB id (i64) 를 반환한다. 없으면 0.
+    ///
+    /// pane/surface FFI 는 i64 id 기반이므로 UUID → DB id 변환이 필요하다.
+    pub fn get_workspace_db_id(&self, workspace_uuid: &str) -> i64 {
+        self.workspaces.get_db_id(workspace_uuid)
+    }
+
+    // ── Pane FFI ────────────────────────────────────────────────────────────
+
+    /// 새 pane 을 생성하고 id 를 반환한다. 오류 시 0.
+    ///
+    /// `parent_id == 0` 은 루트 pane 을 의미한다.
+    pub fn create_pane(&self, workspace_id: i64, parent_id: i64, split: String, ratio: f64) -> i64 {
+        let store = self.workspaces.store_handle();
+        pane::create_pane(&store, workspace_id, parent_id, split, ratio)
+    }
+
+    /// 워크스페이스 내 pane 목록을 반환한다.
+    pub fn list_panes(&self, workspace_id: i64) -> Vec<ffi::PaneInfo> {
+        let store = self.workspaces.store_handle();
+        pane::list_panes(&store, workspace_id)
+    }
+
+    /// pane ratio 를 업데이트한다. 성공 시 true.
+    pub fn update_pane_ratio(&self, pane_id: i64, ratio: f64) -> bool {
+        let store = self.workspaces.store_handle();
+        pane::update_pane_ratio(&store, pane_id, ratio)
+    }
+
+    /// pane 을 삭제한다. 삭제되면 true.
+    pub fn delete_pane(&self, pane_id: i64) -> bool {
+        let store = self.workspaces.store_handle();
+        pane::delete_pane(&store, pane_id)
+    }
+
+    // ── Surface FFI ──────────────────────────────────────────────────────────
+
+    /// 새 surface 를 생성하고 id 를 반환한다. 오류 시 0.
+    ///
+    /// `state_json == ""` 은 빈 상태 (None) 를 의미한다.
+    pub fn create_surface(
+        &self,
+        pane_id: i64,
+        kind: String,
+        state_json: String,
+        tab_order: i64,
+    ) -> i64 {
+        let store = self.workspaces.store_handle();
+        surface::create_surface(&store, pane_id, kind, state_json, tab_order)
+    }
+
+    /// pane 내 surface 목록을 tab_order 오름차순으로 반환한다.
+    pub fn list_surfaces(&self, pane_id: i64) -> Vec<ffi::SurfaceInfo> {
+        let store = self.workspaces.store_handle();
+        surface::list_surfaces(&store, pane_id)
+    }
+
+    /// surface tab_order 를 업데이트한다. 성공 시 true.
+    pub fn update_surface_tab_order(&self, surface_id: i64, tab_order: i64) -> bool {
+        let store = self.workspaces.store_handle();
+        surface::update_surface_tab_order(&store, surface_id, tab_order)
+    }
+
+    /// surface 를 삭제한다. 삭제되면 true.
+    pub fn delete_surface(&self, surface_id: i64) -> bool {
+        let store = self.workspaces.store_handle();
+        surface::delete_surface(&store, surface_id)
+    }
 }
 
 impl Default for RustCore {
@@ -115,6 +186,26 @@ mod ffi {
         pub status: String,
     }
 
+    // @MX:NOTE: [AUTO] pane binary tree 노드의 스냅샷. parent_id==0 은 루트 pane 을 의미
+    #[swift_bridge(swift_repr = "struct")]
+    pub struct PaneInfo {
+        pub id: i64,
+        pub workspace_id: i64,
+        pub parent_id: i64,
+        pub split: String,
+        pub ratio: f64,
+    }
+
+    // @MX:NOTE: [AUTO] surface(탭) 스냅샷. state_json=="" 은 빈 상태를 의미
+    #[swift_bridge(swift_repr = "struct")]
+    pub struct SurfaceInfo {
+        pub id: i64,
+        pub pane_id: i64,
+        pub kind: String,
+        pub state_json: String,
+        pub tab_order: i64,
+    }
+
     extern "Rust" {
         type RustCore;
 
@@ -126,9 +217,26 @@ mod ffi {
         fn create_workspace(&self, name: String, project_path: String) -> String;
         fn delete_workspace(&self, workspace_id: String) -> bool;
         fn list_workspaces(&self) -> Vec<WorkspaceInfo>;
+        fn get_workspace_db_id(&self, workspace_uuid: &str) -> i64;
 
         fn send_user_message(&self, workspace_id: String, message: String) -> bool;
         fn subscribe_events(&self, workspace_id: String) -> bool;
         fn poll_event(&self, workspace_id: String) -> Option<String>;
+
+        fn create_pane(&self, workspace_id: i64, parent_id: i64, split: String, ratio: f64) -> i64;
+        fn list_panes(&self, workspace_id: i64) -> Vec<PaneInfo>;
+        fn update_pane_ratio(&self, pane_id: i64, ratio: f64) -> bool;
+        fn delete_pane(&self, pane_id: i64) -> bool;
+
+        fn create_surface(
+            &self,
+            pane_id: i64,
+            kind: String,
+            state_json: String,
+            tab_order: i64,
+        ) -> i64;
+        fn list_surfaces(&self, pane_id: i64) -> Vec<SurfaceInfo>;
+        fn update_surface_tab_order(&self, surface_id: i64, tab_order: i64) -> bool;
+        fn delete_surface(&self, surface_id: i64) -> bool;
     }
 }

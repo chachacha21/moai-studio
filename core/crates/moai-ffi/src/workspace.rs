@@ -168,6 +168,21 @@ impl WorkspaceRegistry {
         guard.contains_key(id)
     }
 
+    /// 내부 Store 핸들을 반환한다 (pane/surface DAO 공유용).
+    // @MX:NOTE: [AUTO] PaneRegistry/SurfaceRegistry 가 같은 Store 를 공유하기 위한 접근자
+    pub(crate) fn store_handle(&self) -> Store {
+        self.supervisor.store()
+    }
+
+    /// UUID 에 대응하는 supervisor i64 id 를 반환한다. 없으면 0.
+    pub(crate) fn get_db_id(&self, uuid: &str) -> i64 {
+        let guard = self.index.lock().expect("WorkspaceRegistry mutex poisoned");
+        match guard.get(uuid) {
+            Some(entry) => entry.supervisor_id.0,
+            None => 0,
+        }
+    }
+
     /// 큐에서 이벤트 하나를 꺼낸다.
     pub(crate) fn poll_event(&self, id: &str) -> Option<String> {
         let handle = {

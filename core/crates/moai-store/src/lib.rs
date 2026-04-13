@@ -9,7 +9,9 @@
 //! 직렬화하여 안전성을 우선시한다. `Store::clone_handle()` 로 얻은 핸들은
 //! 같은 커넥션을 공유하므로 스레드 간 안전하게 이동할 수 있다.
 
+pub mod pane;
 pub mod state;
+pub mod surface;
 pub mod workspace;
 
 use std::path::Path;
@@ -18,7 +20,9 @@ use std::sync::{Arc, Mutex};
 use rusqlite::{Connection, OptionalExtension, params};
 use thiserror::Error;
 
+pub use pane::{NewPane, PaneDao, PaneRow, PaneStoreExt, SplitKind};
 pub use state::{InvalidTransition, WorkspaceStatus};
+pub use surface::{NewSurface, SurfaceDao, SurfaceKind, SurfaceRow, SurfaceStoreExt};
 pub use workspace::{NewWorkspace, WorkspaceDao, WorkspaceRow, WorkspaceStoreExt};
 
 /// 스토어 오류 타입
@@ -91,7 +95,7 @@ impl Store {
         Ok(store)
     }
 
-    /// 전체 마이그레이션 (v1 → v2) 실행.
+    /// 전체 마이그레이션 (v1 → v2 → v3) 실행.
     fn migrate(&self) -> Result<(), StoreError> {
         let guard = self.conn.lock().map_err(|_| StoreError::PoisonedLock)?;
         guard
@@ -136,7 +140,25 @@ impl Store {
                 .execute("INSERT INTO schema_version (version) VALUES (2)", [])
                 .map_err(|e| StoreError::MigrationError(e.to_string()))?;
         }
+
+        // @MX:NOTE: [AUTO] V3: panes + surfaces 테이블 추가 (SPEC-M2-001 RG-M2-1, RG-M2-2)
+        if current < 3 {
+            let v3_sql = include_str!("../migrations/V3__panes_surfaces.sql");
+            guard
+                .execute_batch(v3_sql)
+                .map_err(|e| StoreError::MigrationError(format!("V3: {e}")))?;
+            guard
+                .execute("INSERT INTO schema_version (version) VALUES (3)", [])
+                .map_err(|e| StoreError::MigrationError(e.to_string()))?;
+        }
         Ok(())
+    }
+
+    /// 테스트 전용: 내부 커넥션 락 가드를 반환한다.
+    ///
+    /// 통합 테스트에서 PRAGMA 질의 등 직접 DB 접근이 필요할 때만 사용한다.
+    pub fn conn_for_test(&self) -> std::sync::MutexGuard<'_, rusqlite::Connection> {
+        self.conn.lock().expect("conn_for_test: mutex poisoned")
     }
 
     /// (deprecated v1 API) 워크스페이스를 삽입하고 생성된 ID를 반환한다.
