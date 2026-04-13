@@ -166,6 +166,24 @@ impl RustCore {
         let store = self.workspaces.store_handle();
         surface::delete_surface(&store, surface_id)
     }
+
+    // ── JSON 반환 FFI (swift-bridge Vectorizable 한계 우회) ──────────────────
+    // @MX:NOTE: [AUTO] Vec<PaneInfo>/Vec<SurfaceInfo> 는 swift-bridge 0.1 Vectorizable 미생성 문제로
+    //           직접 반환 불가. JSON 문자열로 직렬화하여 Swift 측에서 Codable 로 파싱한다.
+    //           C-5 (Vectorizable workaround 제거) 해소 시 이 메서드를 deprecated 처리한다.
+
+    /// 워크스페이스 내 pane 목록을 JSON 문자열로 반환한다.
+    /// Swift 측 `PaneTreeModel.load()` 에서 `JSONDecoder` 로 파싱한다.
+    pub fn list_panes_json(&self, workspace_id: i64) -> String {
+        let store = self.workspaces.store_handle();
+        pane::list_panes_json(&store, workspace_id)
+    }
+
+    /// pane 내 surface 목록을 JSON 문자열로 반환한다.
+    pub fn list_surfaces_json(&self, pane_id: i64) -> String {
+        let store = self.workspaces.store_handle();
+        surface::list_surfaces_json(&store, pane_id)
+    }
 }
 
 impl Default for RustCore {
@@ -238,5 +256,9 @@ mod ffi {
         fn list_surfaces(&self, pane_id: i64) -> Vec<SurfaceInfo>;
         fn update_surface_tab_order(&self, surface_id: i64, tab_order: i64) -> bool;
         fn delete_surface(&self, surface_id: i64) -> bool;
+
+        // JSON 반환 메서드 — swift-bridge Vectorizable 한계 우회
+        fn list_panes_json(&self, workspace_id: i64) -> String;
+        fn list_surfaces_json(&self, pane_id: i64) -> String;
     }
 }

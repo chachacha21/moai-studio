@@ -56,12 +56,28 @@ public protocol RustCoreBridging: AnyObject {
     func sendUserMessage(workspaceId: String, message: String) -> Bool
     func subscribeEvents(workspaceId: String) -> Bool
     func pollEvent(workspaceId: String) -> String?
+
+    // ── Pane FFI (MS-2) ─────────────────────────────────────────────────────
+    // @MX:ANCHOR: [AUTO] Swift 측 pane CRUD FFI 프로토콜 (fan_in>=3: PaneTreeModel, MockRustCoreBridge, RustCoreBridge)
+    // @MX:REASON: [AUTO] MS-2 T-039 PaneTreeModel 이 이 메서드들을 통해 Rust pane DB 를 조작함
+    func listPanesJson(workspaceId: Int64) -> String
+    func createPane(workspaceId: Int64, parentId: Int64, split: String, ratio: Double) -> Int64
+    func updatePaneRatio(paneId: Int64, ratio: Double) -> Bool
+    func deletePane(paneId: Int64) -> Bool
+
+    // ── Surface FFI (MS-2/3) ─────────────────────────────────────────────────
+    func listSurfacesJson(paneId: Int64) -> String
+    func createSurface(paneId: Int64, kind: String, stateJson: String, tabOrder: Int64) -> Int64
+    func deleteSurface(surfaceId: Int64) -> Bool
+
+    // ── Workspace → DB id 변환 ───────────────────────────────────────────────
+    func getWorkspaceDbId(workspaceUuid: String) -> Int64
 }
 
-// @MX:WARN: swift-bridge 0.1 struct_repr 의 Vectorizable 미생성 우회 — stub 구현.
-// @MX:REASON: 생성 코드의 `func list_workspaces() -> RustVec<WorkspaceInfo>` 컴파일 위해 필요.
+// @MX:WARN: [AUTO] swift-bridge 0.1 struct_repr 의 Vectorizable 미생성 우회 — stub 구현.
+// @MX:REASON: [AUTO] 생성 코드의 `func list_workspaces() -> RustVec<WorkspaceInfo>` 컴파일 위해 필요.
 //              RustCoreBridge.listWorkspaces() 가 이 벡터를 실제로 소비하지 않으므로 fatalError trap 안전.
-//              MS-5/6 에서 FFI 를 JSON 반환으로 전환 시 제거.
+//              C-5 (swift-bridge Vectorizable 지원 버전 출시) 시 제거. M2 기술부채 참조.
 extension WorkspaceInfo: Vectorizable {
     public static func vecOfSelfNew() -> UnsafeMutableRawPointer { fatalError("WorkspaceInfo vec not yet bridged (swift-bridge 0.1 limitation)") }
     public static func vecOfSelfFree(vecPtr: UnsafeMutableRawPointer) {}
@@ -71,6 +87,38 @@ extension WorkspaceInfo: Vectorizable {
     public static func vecOfSelfGetMut(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<WorkspaceInfo> { nil }
     public static func vecOfSelfAsPtr(vecPtr: UnsafeMutableRawPointer) -> UnsafePointer<WorkspaceInfo> {
         UnsafePointer<WorkspaceInfo>(bitPattern: 0x1)!
+    }
+    public static func vecOfSelfLen(vecPtr: UnsafeMutableRawPointer) -> UInt { 0 }
+}
+
+// @MX:WARN: [AUTO] PaneInfo Vectorizable stub — swift-bridge 0.1 한계 우회 (C-5 기술부채).
+// @MX:REASON: [AUTO] list_panes() -> Vec<PaneInfo> FFI 컴파일 위해 필요. 실제 벡터 소비는
+//              list_panes_json() JSON 경로로 대체. C-5 해소 시 제거.
+extension PaneInfo: Vectorizable {
+    public static func vecOfSelfNew() -> UnsafeMutableRawPointer { fatalError("PaneInfo vec not bridged (C-5 tech debt)") }
+    public static func vecOfSelfFree(vecPtr: UnsafeMutableRawPointer) {}
+    public static func vecOfSelfPush(vecPtr: UnsafeMutableRawPointer, value: PaneInfo) {}
+    public static func vecOfSelfPop(vecPtr: UnsafeMutableRawPointer) -> Optional<PaneInfo> { nil }
+    public static func vecOfSelfGet(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<PaneInfo> { nil }
+    public static func vecOfSelfGetMut(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<PaneInfo> { nil }
+    public static func vecOfSelfAsPtr(vecPtr: UnsafeMutableRawPointer) -> UnsafePointer<PaneInfo> {
+        UnsafePointer<PaneInfo>(bitPattern: 0x1)!
+    }
+    public static func vecOfSelfLen(vecPtr: UnsafeMutableRawPointer) -> UInt { 0 }
+}
+
+// @MX:WARN: [AUTO] SurfaceInfo Vectorizable stub — swift-bridge 0.1 한계 우회 (C-5 기술부채).
+// @MX:REASON: [AUTO] list_surfaces() -> Vec<SurfaceInfo> FFI 컴파일 위해 필요. 실제 벡터 소비는
+//              list_surfaces_json() JSON 경로로 대체. C-5 해소 시 제거.
+extension SurfaceInfo: Vectorizable {
+    public static func vecOfSelfNew() -> UnsafeMutableRawPointer { fatalError("SurfaceInfo vec not bridged (C-5 tech debt)") }
+    public static func vecOfSelfFree(vecPtr: UnsafeMutableRawPointer) {}
+    public static func vecOfSelfPush(vecPtr: UnsafeMutableRawPointer, value: SurfaceInfo) {}
+    public static func vecOfSelfPop(vecPtr: UnsafeMutableRawPointer) -> Optional<SurfaceInfo> { nil }
+    public static func vecOfSelfGet(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<SurfaceInfo> { nil }
+    public static func vecOfSelfGetMut(vecPtr: UnsafeMutableRawPointer, index: UInt) -> Optional<SurfaceInfo> { nil }
+    public static func vecOfSelfAsPtr(vecPtr: UnsafeMutableRawPointer) -> UnsafePointer<SurfaceInfo> {
+        UnsafePointer<SurfaceInfo>(bitPattern: 0x1)!
     }
     public static func vecOfSelfLen(vecPtr: UnsafeMutableRawPointer) -> UInt { 0 }
 }
@@ -126,6 +174,44 @@ public final class RustCoreBridge: RustCoreBridging {
 
     public func pollEvent(workspaceId: String) -> String? {
         core.poll_event(workspaceId)?.toString()
+    }
+
+    // ── Pane FFI (MS-2) ─────────────────────────────────────────────────────
+
+    public func listPanesJson(workspaceId: Int64) -> String {
+        core.list_panes_json(workspaceId).toString()
+    }
+
+    public func createPane(workspaceId: Int64, parentId: Int64, split: String, ratio: Double) -> Int64 {
+        core.create_pane(workspaceId, parentId, split, ratio)
+    }
+
+    public func updatePaneRatio(paneId: Int64, ratio: Double) -> Bool {
+        core.update_pane_ratio(paneId, ratio)
+    }
+
+    public func deletePane(paneId: Int64) -> Bool {
+        core.delete_pane(paneId)
+    }
+
+    // ── Surface FFI (MS-2/3) ─────────────────────────────────────────────────
+
+    public func listSurfacesJson(paneId: Int64) -> String {
+        core.list_surfaces_json(paneId).toString()
+    }
+
+    public func createSurface(paneId: Int64, kind: String, stateJson: String, tabOrder: Int64) -> Int64 {
+        core.create_surface(paneId, kind, stateJson, tabOrder)
+    }
+
+    public func deleteSurface(surfaceId: Int64) -> Bool {
+        core.delete_surface(surfaceId)
+    }
+
+    // ── Workspace → DB id 변환 ───────────────────────────────────────────────
+
+    public func getWorkspaceDbId(workspaceUuid: String) -> Int64 {
+        core.get_workspace_db_id(workspaceUuid)
     }
 }
 #endif

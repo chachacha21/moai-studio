@@ -84,3 +84,31 @@ pub(crate) fn update_surface_tab_order(store: &Store, surface_id: i64, tab_order
 pub(crate) fn delete_surface(store: &Store, surface_id: i64) -> bool {
     store.surfaces().delete(surface_id).unwrap_or(false)
 }
+
+/// pane 내 surface 목록을 JSON 문자열로 반환한다.
+///
+/// swift-bridge 0.1 의 Vectorizable 미생성 한계를 우회하여 Swift 측 Codable 로 파싱한다.
+/// surface 가 없거나 오류 시 "[]" 를 반환한다.
+// @MX:NOTE: [AUTO] MS-3 T-047 TabBarViewModel.load() 의 JSON 소스.
+//           C-5 (Vectorizable workaround 제거) 해소 시 deprecated 처리.
+pub(crate) fn list_surfaces_json(store: &Store, pane_id: i64) -> String {
+    let dao = store.surfaces();
+    match dao.list_by_pane(pane_id) {
+        Ok(rows) => {
+            let json_rows: Vec<serde_json::Value> = rows
+                .into_iter()
+                .map(|r| {
+                    serde_json::json!({
+                        "id": r.id,
+                        "pane_id": r.pane_id,
+                        "kind": r.kind.as_str(),
+                        "state_json": r.state_json.unwrap_or_default(),
+                        "tab_order": r.tab_order,
+                    })
+                })
+                .collect();
+            serde_json::to_string(&json_rows).unwrap_or_else(|_| "[]".to_string())
+        }
+        Err(_) => "[]".to_string(),
+    }
+}

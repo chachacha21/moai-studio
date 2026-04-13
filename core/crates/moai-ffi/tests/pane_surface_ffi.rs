@@ -1,6 +1,6 @@
-//! Pane/Surface FFI 통합 테스트 (SPEC-M2-001 MS-1 T-037)
+//! Pane/Surface FFI 통합 테스트 (SPEC-M2-001 MS-1 T-037 + MS-2 T-042)
 //!
-//! RustCore FFI 를 통해 pane/surface CRUD 를 검증한다.
+//! RustCore FFI 를 통해 pane/surface CRUD 및 JSON FFI 를 검증한다.
 
 use moai_ffi::RustCore;
 
@@ -124,4 +124,89 @@ fn delete_pane_cascades_surfaces() {
         list.is_empty(),
         "pane 삭제 시 surface 도 CASCADE 삭제되어야 함"
     );
+}
+
+// ── T-042 (JSON FFI): list_panes_json / list_surfaces_json ──────────────────
+
+/// list_panes_json 은 유효한 JSON 배열을 반환한다.
+#[test]
+fn list_panes_json_returns_valid_json() {
+    let core = RustCore::new();
+    let ws_uuid = core.create_workspace("test-json-1".to_string(), "/tmp/json-ffi-1".to_string());
+    let ws_db_id = core.get_workspace_db_id(&ws_uuid);
+    let _pane_id = core.create_pane(ws_db_id, 0, "leaf".to_string(), 0.5);
+
+    let json = core.list_panes_json(ws_db_id);
+    // 유효한 JSON 배열인지 확인
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("list_panes_json 은 유효한 JSON 을 반환해야 함");
+    assert!(parsed.is_array(), "JSON 최상위는 배열이어야 함");
+    assert_eq!(parsed.as_array().unwrap().len(), 1);
+}
+
+/// list_panes_json 은 올바른 필드를 포함한 pane 데이터를 반환한다.
+#[test]
+fn list_panes_json_contains_correct_fields() {
+    let core = RustCore::new();
+    let ws_uuid = core.create_workspace("test-json-2".to_string(), "/tmp/json-ffi-2".to_string());
+    let ws_db_id = core.get_workspace_db_id(&ws_uuid);
+    let pane_id = core.create_pane(ws_db_id, 0, "horizontal".to_string(), 0.7);
+
+    let json = core.list_panes_json(ws_db_id);
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+    let arr = parsed.as_array().unwrap();
+    assert_eq!(arr.len(), 1);
+
+    let pane = &arr[0];
+    assert_eq!(pane["id"].as_i64().unwrap(), pane_id);
+    assert_eq!(pane["workspace_id"].as_i64().unwrap(), ws_db_id);
+    assert_eq!(pane["split"].as_str().unwrap(), "horizontal");
+    assert!((pane["ratio"].as_f64().unwrap() - 0.7).abs() < f64::EPSILON);
+}
+
+/// pane 이 없을 때 list_panes_json 은 빈 배열 "[]" 를 반환한다.
+#[test]
+fn list_panes_json_empty_returns_empty_array() {
+    let core = RustCore::new();
+    let ws_uuid = core.create_workspace("test-json-3".to_string(), "/tmp/json-ffi-3".to_string());
+    let ws_db_id = core.get_workspace_db_id(&ws_uuid);
+
+    let json = core.list_panes_json(ws_db_id);
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+    assert!(parsed.is_array());
+    assert_eq!(parsed.as_array().unwrap().len(), 0);
+}
+
+/// list_surfaces_json 은 유효한 JSON 배열을 반환한다.
+#[test]
+fn list_surfaces_json_returns_valid_json() {
+    let core = RustCore::new();
+    let ws_uuid = core.create_workspace("test-json-4".to_string(), "/tmp/json-ffi-4".to_string());
+    let ws_db_id = core.get_workspace_db_id(&ws_uuid);
+    let pane_id = core.create_pane(ws_db_id, 0, "leaf".to_string(), 0.5);
+    let _surf_id = core.create_surface(pane_id, "terminal".to_string(), "".to_string(), 0);
+
+    let json = core.list_surfaces_json(pane_id);
+    let parsed: serde_json::Value =
+        serde_json::from_str(&json).expect("list_surfaces_json 은 유효한 JSON 을 반환해야 함");
+    assert!(parsed.is_array());
+    assert_eq!(parsed.as_array().unwrap().len(), 1);
+}
+
+/// list_surfaces_json 은 kind 필드를 포함한다.
+#[test]
+fn list_surfaces_json_contains_kind_field() {
+    let core = RustCore::new();
+    let ws_uuid = core.create_workspace("test-json-5".to_string(), "/tmp/json-ffi-5".to_string());
+    let ws_db_id = core.get_workspace_db_id(&ws_uuid);
+    let pane_id = core.create_pane(ws_db_id, 0, "leaf".to_string(), 0.5);
+    let surf_id = core.create_surface(pane_id, "markdown".to_string(), "".to_string(), 1);
+
+    let json = core.list_surfaces_json(pane_id);
+    let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+    let arr = parsed.as_array().unwrap();
+    let surf = &arr[0];
+    assert_eq!(surf["id"].as_i64().unwrap(), surf_id);
+    assert_eq!(surf["kind"].as_str().unwrap(), "markdown");
+    assert_eq!(surf["tab_order"].as_i64().unwrap(), 1);
 }

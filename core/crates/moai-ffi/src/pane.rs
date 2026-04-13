@@ -73,3 +73,32 @@ pub(crate) fn update_pane_ratio(store: &Store, pane_id: i64, ratio: f64) -> bool
 pub(crate) fn delete_pane(store: &Store, pane_id: i64) -> bool {
     store.panes().delete(pane_id).unwrap_or(false)
 }
+
+/// 워크스페이스 내 pane 목록을 JSON 문자열로 반환한다.
+///
+/// swift-bridge 0.1 의 Vectorizable 미생성 한계를 우회하여 Swift 측 Codable 로 파싱한다.
+/// pane 이 없거나 오류 시 "[]" 를 반환한다.
+// @MX:NOTE: [AUTO] MS-2 T-042 PaneTreeModel.load() 의 JSON 소스.
+//           C-5 (Vectorizable workaround 제거) 해소 시 deprecated 처리.
+pub(crate) fn list_panes_json(store: &Store, workspace_id: i64) -> String {
+    let dao = store.panes();
+    match dao.list_by_workspace(workspace_id) {
+        Ok(rows) => {
+            // PaneRow 를 직접 JSON 으로 직렬화 (serde_json 사용)
+            let json_rows: Vec<serde_json::Value> = rows
+                .into_iter()
+                .map(|r| {
+                    serde_json::json!({
+                        "id": r.id,
+                        "workspace_id": r.workspace_id,
+                        "parent_id": r.parent_id.unwrap_or(0),
+                        "split": r.split.as_str(),
+                        "ratio": r.ratio,
+                    })
+                })
+                .collect();
+            serde_json::to_string(&json_rows).unwrap_or_else(|_| "[]".to_string())
+        }
+        Err(_) => "[]".to_string(),
+    }
+}

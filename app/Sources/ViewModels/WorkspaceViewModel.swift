@@ -27,7 +27,8 @@ public final class WorkspaceViewModel {
     /// 폴링 간격. 16ms ≈ 60 Hz (spec §RG-M1-3 참조).
     public static let pollIntervalMs: Int = 16
 
-    private let bridge: RustCoreBridging
+    // @MX:NOTE: [AUTO] PaneContainer 에서 PaneTreeModel 생성 시 접근 필요 — internal 공개 수준
+    public let bridge: RustCoreBridging
     private var pollTimer: DispatchSourceTimer?
     private var subscribedWorkspaces: Set<String> = []
 
