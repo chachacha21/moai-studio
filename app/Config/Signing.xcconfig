@@ -1,0 +1,12 @@
+// @MX:NOTE: 기본 서명 설정 — CI/로컬 모두에서 오버라이드 가능.
+// CI: xcodebuild 커맨드라인 오버라이드로 이 값을 덮어씁니다.
+// 로컬: setup-signing-local.sh 실행 후 생성되는 Signing.local.xcconfig 가
+//       아래 #include? 지시어로 자동 로드됩니다.
+
+// 기본값: 서명 없음 (ad-hoc 또는 CI 오버라이드 사용)
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+// 로컬 오버라이드 파일 (gitignore 됨, 존재할 때만 포함)
+#include? "Signing.local.xcconfig"

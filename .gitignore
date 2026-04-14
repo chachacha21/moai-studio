@@ -90,6 +90,9 @@ secret-key-*
 .aws/config
 .aws/credentials
 
+# Local signing overrides (setup-signing-local.sh 생성, 커밋 금지)
+app/Config/Signing.local.xcconfig
+
 # ===========================================
 # Claude Code Configuration
 # ===========================================

@@ -108,7 +108,7 @@ MS-7 신규 @MX 태그:
 
 | 항목 | 상태 | 근거 |
 |------|------|------|
-| C-1: UITest CI 서명 | 부분 해소 | ad-hoc signing 구성. 전체 해소는 Apple Dev account secret 필요. |
+| C-1: UITest CI 서명 | 준비 완료 (인프라 — 수동 secrets 업로드 1회 필요) | composite action + HAS_SIGNING 조건부 분기 구성 완료. 상세: carry-over-c1-resolution.md |
 | C-2: Claude CLI E2E | opt-in 스크립트 | `scripts/validate-claude-e2e.sh`. CI 자동화는 M3. |
 | C-3: 10분 스트레스 | opt-in 스크립트 | `scripts/stress-test-4ws.sh` + Rust `#[ignore]` 테스트. |
 | C-4: Metal 60fps 벤치마크 | 하네스 생성 | GhosttyMetalBenchmarkTests.swift 하네스 완료. 전체 측정은 GhosttyHost wiring 후. |

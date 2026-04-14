@@ -6,9 +6,16 @@ on:
     paths:
       - 'app/**'
       - '.github/workflows/ci-swift.yml'
+      - '.github/actions/install-signing/**'
   pull_request:
     paths:
       - 'app/**'
+
+# BUILD_CERTIFICATE_BASE64 Secret 가용 여부에 따라 UITest 경로를 분기합니다.
+# Secret 없음 (fork PR 등): UITest skip + 안내 메시지 출력
+# Secret 있음: composite action 으로 임시 키체인 구성 → signed UITest 실행
+env:
+  HAS_SIGNING: ${{ secrets.BUILD_CERTIFICATE_BASE64 != '' }}
 
 jobs:
   swift:
@@ -69,18 +76,36 @@ jobs:
             -skip-testing:MoAIStudioUITests \
             test-without-building
 
-      # --- UITest ad-hoc 서명 (T-077, C-1 best-effort) ---
-      # 전체 UITest CI 는 Apple Developer Team ID secret 필요.
-      # Ad-hoc 서명으로 best-effort 실행; macOS 권한 다이얼로그로 실패 가능.
-      - name: UITest with ad-hoc signing (best-effort)
+      # --- UITest: signed 경로 (BUILD_CERTIFICATE_BASE64 Secret 존재 시) ---
+      - name: Install signing (if available)
+        if: env.HAS_SIGNING == 'true'
+        id: install-signing
+        uses: ./.github/actions/install-signing
+        with:
+          certificate-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+          team-id: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: UITest (signed)
+        if: env.HAS_SIGNING == 'true'
         working-directory: app
-        continue-on-error: true
         run: |
           xcodebuild \
             -project MoAIStudio.xcodeproj \
             -scheme MoAIStudio \
             -destination 'platform=macOS' \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGN_STYLE="Manual" \
-            CODE_SIGNING_ALLOWED="YES" \
-            test -only-testing:MoAIStudioUITests
+            -only-testing:MoAIStudioUITests \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            OTHER_CODE_SIGN_FLAGS="--keychain ${{ steps.install-signing.outputs.keychain-path }}" \
+            test
+
+      # --- UITest: skip 경로 (Secret 미설정 시, fork PR 등) ---
+      - name: UITest skip notice
+        if: env.HAS_SIGNING != 'true'
+        run: |
+          echo "UITest skipped — signing secrets not configured."
+          echo "See .github/SIGNING.md for setup instructions."
+          echo "(Skipping MoAIStudioUITests — configure secrets per .github/SIGNING.md)"

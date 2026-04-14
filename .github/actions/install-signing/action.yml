@@ -1,0 +1,110 @@
+# @MX:NOTE: 재사용 가능한 composite action — Apple 인증서를 임시 키체인에 설치.
+# Apple TN3125 + GitHub Actions 공식 macOS 서명 레시피를 따릅니다.
+# 로그인 키체인을 절대 수정하지 않으며, job 종료 시 임시 키체인을 자동 삭제합니다.
+name: Install Apple Signing Certificate
+description: >
+  .p12 인증서를 임시 키체인에 설치하고 xcodebuild 서명에 필요한 환경을
+  준비합니다. job 종료 시 post 단계에서 임시 키체인을 자동 삭제합니다.
+
+inputs:
+  certificate-base64:
+    description: "BASE64로 인코딩된 .p12 인증서 (BUILD_CERTIFICATE_BASE64)"
+    required: true
+  p12-password:
+    description: ".p12 파일 암호 (P12_PASSWORD)"
+    required: true
+  keychain-password:
+    description: "임시 키체인 생성에 사용할 임의 암호 (KEYCHAIN_PASSWORD)"
+    required: true
+  team-id:
+    description: "Apple Developer Team ID (10자, APPLE_TEAM_ID)"
+    required: true
+
+outputs:
+  keychain-path:
+    description: "생성된 임시 키체인 파일 경로"
+    value: ${{ steps.setup-keychain.outputs.keychain-path }}
+
+runs:
+  using: composite
+  steps:
+    # 1. .p12 파일을 RUNNER_TEMP 에 디코딩
+    - name: Decode certificate to file
+      id: decode-cert
+      shell: bash
+      run: |
+        CERT_PATH="$RUNNER_TEMP/moai-signing-cert.p12"
+        echo "${{ inputs.certificate-base64 }}" | base64 --decode > "$CERT_PATH"
+        echo "cert-path=$CERT_PATH" >> "$GITHUB_OUTPUT"
+
+    # 2. 임시 키체인 생성 및 잠금 해제
+    - name: Create and configure temporary keychain
+      id: setup-keychain
+      shell: bash
+      run: |
+        KEYCHAIN_PATH="$RUNNER_TEMP/moai-signing.keychain-db"
+        echo "keychain-path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"
+        echo "SIGNING_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+        # 기존 동명 키체인이 있으면 삭제
+        security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+
+        # 임시 키체인 생성
+        security create-keychain -p "${{ inputs.keychain-password }}" "$KEYCHAIN_PATH"
+
+        # 키체인 잠금 해제 (CI runner 세션 동안 유지)
+        security unlock-keychain -p "${{ inputs.keychain-password }}" "$KEYCHAIN_PATH"
+
+        # 키체인 잠금 타임아웃 비활성화 (빌드 중 재잠금 방지)
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+
+        # 키체인 검색 목록에 추가 (기존 목록 보존)
+        security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+    # 3. .p12 를 임시 키체인에 임포트
+    - name: Import certificate into keychain
+      shell: bash
+      run: |
+        KEYCHAIN_PATH="$RUNNER_TEMP/moai-signing.keychain-db"
+        CERT_PATH="${{ steps.decode-cert.outputs.cert-path }}"
+
+        # -A: 모든 앱 접근 허용 (xcodebuild 가 프롬프트 없이 사용 가능)
+        security import "$CERT_PATH" \
+          -k "$KEYCHAIN_PATH" \
+          -P "${{ inputs.p12-password }}" \
+          -T /usr/bin/codesign \
+          -T /usr/bin/xcodebuild \
+          -A
+
+        # 코드 서명 파티션 리스트 설정 (User interaction is not allowed 방지)
+        security set-key-partition-list \
+          -S apple-tool:,apple: \
+          -s \
+          -k "${{ inputs.keychain-password }}" \
+          "$KEYCHAIN_PATH"
+
+    # 4. 인증서 설치 확인
+    - name: Verify certificate installation
+      shell: bash
+      run: |
+        echo "=== 설치된 코드 서명 ID 목록 ==="
+        security find-identity -p codesigning -v "$RUNNER_TEMP/moai-signing.keychain-db"
+
+    # 5. DEVELOPMENT_TEAM 환경 변수 export
+    - name: Export team ID
+      shell: bash
+      run: |
+        echo "DEVELOPMENT_TEAM=${{ inputs.team-id }}" >> "$GITHUB_ENV"
+
+  # post 단계: job 종료 시 임시 키체인 자동 삭제
+  post:
+    shell: bash
+    run: |
+      KEYCHAIN_PATH="$RUNNER_TEMP/moai-signing.keychain-db"
+      if [ -f "$KEYCHAIN_PATH" ]; then
+        echo "임시 키체인 삭제: $KEYCHAIN_PATH"
+        security delete-keychain "$KEYCHAIN_PATH" || true
+      fi
+      # .p12 파일도 삭제
+      rm -f "$RUNNER_TEMP/moai-signing-cert.p12"
+  post-if: always()

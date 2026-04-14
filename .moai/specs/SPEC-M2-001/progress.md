@@ -592,9 +592,38 @@ MS-1 완료 시 테스트: 208개
 **Carry-over 해소**: C-5(MS-2), C-6(MS-7), C-7(MS-7), C-8(MS-7) — 4건 완전 해소
 **Carry-over 이월**: C-1(부분), C-2(opt-in), C-3(opt-in), C-4(하네스) — M3 예정
 
+## C-1 Full Resolution (post-M2)
+
+**날짜**: 2026-04-15
+
+C-1 "UITest CI 서명" 의 인프라 전체 구성 완료.
+상세 내용: [carry-over-c1-resolution.md](carry-over-c1-resolution.md)
+
+### 신규 파일
+
+| 파일 | 용도 |
+|------|------|
+| `.github/actions/install-signing/action.yml` | 임시 키체인 설치 composite action |
+| `.github/SIGNING.md` | Apple 가입 → Secrets 업로드 체크리스트 |
+| `scripts/setup-signing-local.sh` | 로컬 개발자 서명 설정 |
+| `scripts/export-signing-assets.sh` | GitHub Secrets 값 생성 헬퍼 |
+| `app/Config/Signing.xcconfig` | 서명 기본 설정 |
+
+### 수정 파일
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `.github/workflows/ci-swift.yml` | HAS_SIGNING 조건부 분기 추가 |
+| `.gitignore` | Signing.local.xcconfig 제외 |
+| `.github/WORKFLOWS.md` | C-1 상태 업데이트 + SIGNING.md 링크 |
+
+**C-1 상태**: 부분 해소 → **인프라 준비 완료** (Secrets 업로드 1회 시 자동화 활성)
+
+---
+
 ## 알려진 제한 사항
 
-- XCUITest (NSSplitView UI 상호작용): 서명 이슈 (C-1 carry-over) 로 UI 테스트 제외. 순수 모델 테스트만 검증.
+- XCUITest (NSSplitView UI 상호작용): 서명 인프라 준비 완료. Apple Developer Program Secrets 업로드 1회 후 자동 실행 활성화 예정.
 - TerminalSurface 에 WorkspaceSnapshot 미연결: MS-3 에서는 TerminalSurfacePlaceholder 를 표시. MS-7 에서 @Environment 로 workspace 주입 후 실제 TerminalSurface(workspace:) 로 교체 예정.
 - 탭 재배치 (reorder): SwiftUI onDrag/onDrop 기반. NSCollectionView DnD 와 동작이 다를 수 있음. 수동 검증 필요.
 - SurfaceProtocol 이 View 를 상속하므로 associatedtype Body 를 암묵적으로 요구함. Swift 6 existential type 에서 `any SurfaceProtocol` 박싱 시 제약 있음. MS-7 에서 AnyView 래퍼 패턴 적용 예정.

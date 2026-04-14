@@ -32,13 +32,14 @@
 
 GhosttyKit 빌드는 Metal Toolchain 미설치 시 `continue-on-error: true` 로 실패를 건너뜁니다.
 
-### UITest 서명 전략 (C-1 carry-over)
+### UITest 서명 전략 (C-1 carry-over 해소)
 
-- **현재 구현**: Ad-hoc 서명(`CODE_SIGN_IDENTITY="-"`)으로 best-effort 실행
-- **완전 해소 조건**: Apple Developer Team ID를 GitHub Secrets에 등록 후 provisioning 프로파일 구성 필요
-  - 필요 Secrets: `APPLE_TEAM_ID`, `APPLE_CERTIFICATE_BASE64`, `APPLE_CERTIFICATE_PASSWORD`
-  - 완전 구현 참고: [Apple Xcode signing in CI](https://developer.apple.com/documentation/xcode/signing-a-macos-app-for-distribution)
-- **상태**: 부분 해소 (M3에서 완전 해소 예정)
+- **현재 구현**: `HAS_SIGNING` 조건부 분기
+  - Secrets 있음: `.github/actions/install-signing` composite action → Developer ID Application 서명 → UITest 실행
+  - Secrets 없음 (fork PR 등): UITest skip + 안내 메시지 출력
+- **필요 Secrets**: `BUILD_CERTIFICATE_BASE64`, `P12_PASSWORD`, `KEYCHAIN_PASSWORD`, `APPLE_TEAM_ID`
+- **설정 방법**: [`.github/SIGNING.md`](SIGNING.md) 참고
+- **상태**: 인프라 준비 완료 — Secrets 업로드 1회 후 완전 자동화 활성
 
 ---
 
@@ -53,11 +54,11 @@ GhosttyKit 빌드는 Metal Toolchain 미설치 시 `continue-on-error: true` 로
 
 ---
 
-## 이월 항목 (M3 예정)
+## 이월 항목
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| C-1 UITest 전체 서명 | 부분 해소 | Apple Dev 계정 Secrets 설정 필요 |
+| C-1 UITest 전체 서명 | 인프라 준비 완료 | Secrets 업로드 1회 후 자동화 활성 ([SIGNING.md](SIGNING.md)) |
 | C-2 Claude CLI E2E | opt-in 스크립트 | CI 자동화는 M3 |
 | C-3 10min 스트레스 | opt-in 스크립트 | CI 자동화는 M3 |
 | C-4 Metal 60fps 벤치마크 | 하네스 생성 완료 | 전체 측정은 GhosttyHost wiring 완료 후 |
