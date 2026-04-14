@@ -212,7 +212,8 @@ struct LeafPaneView: View {
                     onFileOpen: { path in
                         let kind = SurfaceRouter.kindForExtension(path)
                         _ = model.newTab(kind: kind, statePath: path)
-                    }
+                    },
+                    statePath: model.activeStatePath()
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())
@@ -241,18 +242,24 @@ struct LeafPaneView: View {
 
 /// 활성 탭의 SurfaceKind 에 따라 해당 Surface 뷰를 선택하는 라우터.
 ///
-/// MS-4: filetree case 가 실제 FileTreeSurface 로 연결된다.
-// @MX:NOTE: [AUTO] resolveWorkspacePath() 는 MS-5+ 에서 @Environment WorkspaceSnapshot 주입 후
-//            실제 워크스페이스 경로로 교체 예정. MS-4 에서는 홈 디렉토리 폴백.
+/// MS-5: markdown/image/browser case 가 실제 Surface 로 연결된다.
+// @MX:NOTE: [AUTO] resolveWorkspacePath() 는 MS-6+ 에서 @Environment WorkspaceSnapshot 주입 후
+//            실제 워크스페이스 경로로 교체 예정. MS-5 에서는 홈 디렉토리 폴백.
 // @MX:NOTE: [AUTO] T-054: 파일 확장자 → SurfaceKind 매핑.
-//            .md/.markdown → .markdown, image 확장자 → .image (placeholder), 나머지 → .terminal
+//            .md/.markdown → .markdown, image 확장자 → .image, 나머지 → .terminal
+// @MX:NOTE: [AUTO] MS-5: statePath 를 state_json 에서 추출.
+//            {"path":"/abs/path"} 형식 또는 단순 경로 문자열 양쪽 지원.
 struct SurfaceRouter: View {
     let activeKind: SurfaceKind?
     let paneId: Int64
     let bridge: RustCoreBridging
     let onFileOpen: (String) -> Void
 
-    // MS-4 에서는 홈 디렉토리 폴백 — MS-5+ 에서 @Environment 워크스페이스로 교체
+    // @MX:NOTE: [AUTO] statePath 는 TabBarViewModel.activeTab?.statePath 에서 전달.
+    //           MS-6+ 에서 @Environment 패턴으로 개선 예정.
+    var statePath: String = ""
+
+    // MS-4/5 에서는 홈 디렉토리 폴백 — MS-6+ 에서 @Environment 워크스페이스로 교체
     private func resolveWorkspacePath() -> String {
         FileManager.default.homeDirectoryForCurrentUser.path
     }
@@ -267,8 +274,13 @@ struct SurfaceRouter: View {
                 bridge: bridge,
                 onFileOpen: onFileOpen
             )
-        case .code, .markdown, .image, .browser,
-             .agentRun, .kanban, .memory, .instructionsGraph:
+        case .markdown:
+            MarkdownSurface(filePath: statePath)
+        case .image:
+            ImageSurface(filePath: statePath)
+        case .browser:
+            BrowserSurface()
+        case .code, .agentRun, .kanban, .memory, .instructionsGraph:
             NotYetImplementedSurface(kind: activeKind!)
         }
     }

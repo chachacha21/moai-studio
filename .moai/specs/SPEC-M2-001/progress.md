@@ -303,9 +303,106 @@ MS-1 완료 시 테스트: 208개
 
 **Scope 준수**: 26/26 task (100%, expansion 없음)
 
+## MS-5 완료 현황
+
+| Task | 상태 | RED | GREEN | REFACTOR |
+|------|------|-----|-------|----------|
+| T-057 | 완료 | MarkdownViewModelTests RED | MarkdownSurface.swift + MarkdownViewModel GREEN | - |
+| T-058 | 완료 | EARSFormatterTests RED | EARSFormatter.swift (regex 변환) GREEN | - |
+| T-059 | 완료 | - | MarkdownSurface WebContentRenderer (CDN KaTeX/Mermaid HTML 템플릿) GREEN | - |
+| T-060 | 완료 | - | MarkdownViewModel.startWatching() / stopWatching() (DispatchSource) GREEN | - |
+| T-061 | 완료 | ImageViewModelTests RED | ImageSurface.swift + ImageViewModel GREEN | - |
+| T-062 | 완료 | - | ImageDiffView + Vision VNFeaturePrintRequest 유사도 GREEN | - |
+| T-063 | 완료 | BrowserViewModelTests RED | BrowserSurface.swift + BrowserViewModel GREEN | - |
+| T-064 | 완료 | - | DevServerDetector.swift (포트 프로브 병렬) GREEN | - |
+| T-065 | 완료 | - | WKNavigationDelegate 링크 처리 (localhost 허용, 외부→기본브라우저) GREEN | - |
+| T-066 | 완료 | 4개 테스트 파일 RED | 전체 통과 GREEN | - |
+
+---
+
+## 테스트 결과 (MS-5 완료 후)
+
+- Rust: 218개 (변경 없음, 모두 통과)
+- Swift: 80개 (기존 48 + MS-5 신규 32개)
+  - MarkdownViewModelTests: 7개
+  - ImageViewModelTests: 9개
+  - BrowserViewModelTests: 11개
+  - EARSFormatterTests: 5개
+
+---
+
+## 파일 변경 목록 (MS-5 신규/수정)
+
+### Swift 신규
+- `app/Sources/Surfaces/Markdown/MarkdownSurface.swift` — MarkdownViewModel + MarkdownSurface + MarkdownWebView
+- `app/Sources/Surfaces/Markdown/EARSFormatter.swift` — EARS 패턴/SPEC-ID 강조 포맷터
+- `app/Sources/Surfaces/Image/ImageSurface.swift` — ImageViewModel + ImageSurface + ImageDiffView (Vision 유사도)
+- `app/Sources/Surfaces/Browser/BrowserSurface.swift` — BrowserViewModel + BrowserSurface + BrowserWebViewRepresentable
+- `app/Sources/Surfaces/Browser/DevServerDetector.swift` — 로컬 포트 자동 감지
+- `app/Tests/MarkdownViewModelTests.swift` — 7개 테스트
+- `app/Tests/ImageViewModelTests.swift` — 9개 테스트
+- `app/Tests/BrowserViewModelTests.swift` — 11개 테스트
+- `app/Tests/EARSFormatterTests.swift` — 5개 테스트
+
+### Swift 수정
+- `app/Sources/Shell/Splits/PaneSplitView.swift` — SurfaceRouter .markdown/.image/.browser cases 연결 + statePath 전달
+- `app/Sources/Shell/Tabs/TabBarViewModel.swift` — activeStatePath() + statePathCache 추가
+- `app/MoAIStudio.xcodeproj/project.pbxproj` — 신규 파일 등록 (소스 + 테스트)
+
+---
+
+## 품질 게이트 (MS-5)
+
+- [x] `cargo test --workspace`: 218/218 통과 (Rust 변경 없음, 기존 통과 유지)
+- [x] Xcode build-for-testing: ** TEST BUILD SUCCEEDED ** (0 errors)
+- [x] Swift 단위 테스트 (MoAIStudioTests): 80/80 통과 (기존 48 + MS-5 32개)
+
+## @MX 태그 추가 목록 (MS-5)
+
+| 파일 | 태그 | 설명 |
+|------|------|------|
+| `MarkdownSurface.swift` | ANCHOR × 1 | MarkdownViewModel — Markdown 탭 상태 유일 소스 (fan_in>=3) |
+| `MarkdownSurface.swift` | WARN × 1 | DispatchSource fd 누수 위험 (stopWatching 필수) |
+| `MarkdownSurface.swift` | NOTE × 2 | 렌더링 방식(AttributedString+WKWebView 하이브리드), CDN 의존 |
+| `ImageSurface.swift` | ANCHOR × 1 | ImageViewModel — Image 탭 상태 유일 소스 (fan_in>=3) |
+| `ImageSurface.swift` | NOTE × 2 | 지원 포맷(NSImage 네이티브), Vision 피처 프린트 vs 진짜 SSIM |
+| `BrowserSurface.swift` | ANCHOR × 1 | BrowserViewModel — Browser 탭 상태 유일 소스 (fan_in>=3) |
+| `BrowserSurface.swift` | NOTE × 1 | 링크 처리 정책 (localhost 허용, 외부→기본브라우저) |
+| `DevServerDetector.swift` | NOTE × 1 | 프로브 포트 목록 설명 |
+| `EARSFormatter.swift` | NOTE × 1 | EARS 패턴 변환 방식 |
+
+## 반복 로그 (MS-5)
+
+| 반복 | 완료 AC | 에러 수 |
+|------|---------|---------|
+| 9 (MS-5 Swift RED) | 0 (타입 미존재) | 0 (프로젝트 미등록) |
+| 10 (MS-5 Swift GREEN) | 10 (T-057~T-066) | 0 |
+
+---
+
+## 중간 체크포인트 (2026-04-14) — MS-5 완료
+
+**Status**: MS-1~MS-5 완료, MS-6~MS-7 잔여
+
+**테스트 통과**: 218 Rust + 80 Swift = 298/298 PASS
+
+**@MX 태그**: 38개 (MS-1~MS-4) + 10개 (MS-5) = 48개 누적
+
+**Scope 준수**: 36/36 task (100%, expansion 없음)
+
+**다음 단계**:
+- MS-6 (Command Palette, 7 tasks)
+- MS-7 (CI/CD + carry-over + E2E, 14 tasks)
+
+---
+
 ## 알려진 제한 사항
 
 - XCUITest (NSSplitView UI 상호작용): 서명 이슈 (C-1 carry-over) 로 UI 테스트 제외. 순수 모델 테스트만 검증.
-- TerminalSurface 에 WorkspaceSnapshot 미연결: MS-3 에서는 TerminalSurfacePlaceholder 를 표시. MS-4+ 에서 @Environment 로 workspace 주입 후 실제 TerminalSurface(workspace:) 로 교체 예정.
+- TerminalSurface 에 WorkspaceSnapshot 미연결: MS-3 에서는 TerminalSurfacePlaceholder 를 표시. MS-6+ 에서 @Environment 로 workspace 주입 후 실제 TerminalSurface(workspace:) 로 교체 예정.
 - 탭 재배치 (reorder): SwiftUI onDrag/onDrop 기반. NSCollectionView DnD 와 동작이 다를 수 있음. 수동 검증 필요.
-- SurfaceProtocol 이 View 를 상속하므로 associatedtype Body 를 암묵적으로 요구함. Swift 6 existential type 에서 `any SurfaceProtocol` 박싱 시 제약 있음. MS-4+ 에서 AnyView 래퍼 패턴 적용 예정.
+- SurfaceProtocol 이 View 를 상속하므로 associatedtype Body 를 암묵적으로 요구함. Swift 6 existential type 에서 `any SurfaceProtocol` 박싱 시 제약 있음. MS-6+ 에서 AnyView 래퍼 패턴 적용 예정.
+- MarkdownSurface: KaTeX/Mermaid CDN 의존 (오프라인 환경에서 수식/다이어그램 미렌더링). MS-6+ 에서 번들 내 정적 리소스로 교체 예정.
+- ImageDiffView: Vision VNFeaturePrintRequest 기반 근사 유사도 (진정한 SSIM 아님). MS-6+ 에서 픽셀 레벨 SSIM 구현 예정.
+- BrowserSurface: statePath 사용 안 함 (URL 은 DevServerDetector 또는 URL 바 입력으로만 결정). MS-6+ 에서 마지막 URL 영속 예정.
+- statePathCache: TabBarViewModel 메모리 내 캐시. 앱 재시작 시 소실. MS-6+ 에서 state_json DB 읽기로 교체 예정.

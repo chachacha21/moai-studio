@@ -42,6 +42,15 @@
 		FF6600AABB22CC33DD44EE55 /* TabBarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6600AABB22CC33DD44EE66 /* TabBarViewModelTests.swift */; };
 		MS4FTSURF01 /* FileTreeSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS4FTSURF00 /* FileTreeSurface.swift */; };
 		MS4FTTEST01 /* FileTreeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS4FTTEST00 /* FileTreeViewModelTests.swift */; };
+		MS5MDSURF01 /* MarkdownSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5MDSURF00 /* MarkdownSurface.swift */; };
+		MS5EARS01 /* EARSFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5EARS00 /* EARSFormatter.swift */; };
+		MS5IMGSURF01 /* ImageSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5IMGSURF00 /* ImageSurface.swift */; };
+		MS5BRWSURF01 /* BrowserSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5BRWSURF00 /* BrowserSurface.swift */; };
+		MS5DEVDET01 /* DevServerDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5DEVDET00 /* DevServerDetector.swift */; };
+		MS5MDTEST01 /* MarkdownViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5MDTEST00 /* MarkdownViewModelTests.swift */; };
+		MS5IMGTEST01 /* ImageViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5IMGTEST00 /* ImageViewModelTests.swift */; };
+		MS5BRWTEST01 /* BrowserViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5BRWTEST00 /* BrowserViewModelTests.swift */; };
+		MS5EARSTEST01 /* EARSFormatterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5EARSTEST00 /* EARSFormatterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -102,6 +111,15 @@
 		FF6600AABB22CC33DD44EE66 /* TabBarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarViewModelTests.swift; sourceTree = "<group>"; };
 		MS4FTSURF00 /* FileTreeSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeSurface.swift; sourceTree = "<group>"; };
 		MS4FTTEST00 /* FileTreeViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeViewModelTests.swift; sourceTree = "<group>"; };
+		MS5MDSURF00 /* MarkdownSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownSurface.swift; sourceTree = "<group>"; };
+		MS5EARS00 /* EARSFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EARSFormatter.swift; sourceTree = "<group>"; };
+		MS5IMGSURF00 /* ImageSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageSurface.swift; sourceTree = "<group>"; };
+		MS5BRWSURF00 /* BrowserSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSurface.swift; sourceTree = "<group>"; };
+		MS5DEVDET00 /* DevServerDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevServerDetector.swift; sourceTree = "<group>"; };
+		MS5MDTEST00 /* MarkdownViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownViewModelTests.swift; sourceTree = "<group>"; };
+		MS5IMGTEST00 /* ImageViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewModelTests.swift; sourceTree = "<group>"; };
+		MS5BRWTEST00 /* BrowserViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserViewModelTests.swift; sourceTree = "<group>"; };
+		MS5EARSTEST00 /* EARSFormatterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EARSFormatterTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -207,8 +225,37 @@
 				AA11BB22CC33DD44EE55FF00 /* SurfaceProtocol.swift */,
 				MS3TERM001 /* Terminal */,
 				MS4FTGRP01 /* FileTree */,
+				MS5MDGRP01 /* Markdown */,
+				MS5IMGGRP01 /* Image */,
+				MS5BRWGRP01 /* Browser */,
 			);
 			path = Surfaces;
+			sourceTree = "<group>";
+		};
+		MS5MDGRP01 /* Markdown */ = {
+			isa = PBXGroup;
+			children = (
+				MS5MDSURF00 /* MarkdownSurface.swift */,
+				MS5EARS00 /* EARSFormatter.swift */,
+			);
+			path = Markdown;
+			sourceTree = "<group>";
+		};
+		MS5IMGGRP01 /* Image */ = {
+			isa = PBXGroup;
+			children = (
+				MS5IMGSURF00 /* ImageSurface.swift */,
+			);
+			path = Image;
+			sourceTree = "<group>";
+		};
+		MS5BRWGRP01 /* Browser */ = {
+			isa = PBXGroup;
+			children = (
+				MS5BRWSURF00 /* BrowserSurface.swift */,
+				MS5DEVDET00 /* DevServerDetector.swift */,
+			);
+			path = Browser;
 			sourceTree = "<group>";
 		};
 		MS4FTGRP01 /* FileTree */ = {
@@ -262,6 +309,10 @@
 				2E6B1EA21D2C4E4DABEF46D3 /* PaneTreeModelTests.swift */,
 				FF6600AABB22CC33DD44EE66 /* TabBarViewModelTests.swift */,
 				MS4FTTEST00 /* FileTreeViewModelTests.swift */,
+				MS5MDTEST00 /* MarkdownViewModelTests.swift */,
+				MS5IMGTEST00 /* ImageViewModelTests.swift */,
+				MS5BRWTEST00 /* BrowserViewModelTests.swift */,
+				MS5EARSTEST00 /* EARSFormatterTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -450,6 +501,10 @@
 				FC9ED302A56C44B98DCE76DB /* PaneTreeModelTests.swift in Sources */,
 				FF6600AABB22CC33DD44EE55 /* TabBarViewModelTests.swift in Sources */,
 				MS4FTTEST01 /* FileTreeViewModelTests.swift in Sources */,
+				MS5MDTEST01 /* MarkdownViewModelTests.swift in Sources */,
+				MS5IMGTEST01 /* ImageViewModelTests.swift in Sources */,
+				MS5BRWTEST01 /* BrowserViewModelTests.swift in Sources */,
+				MS5EARSTEST01 /* EARSFormatterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -482,6 +537,11 @@
 				DD44EE55FF6600AABB22CC33 /* TabBarView.swift in Sources */,
 				EE55FF6600AABB22CC33DD44 /* TabBarViewModel.swift in Sources */,
 				MS4FTSURF01 /* FileTreeSurface.swift in Sources */,
+				MS5MDSURF01 /* MarkdownSurface.swift in Sources */,
+				MS5EARS01 /* EARSFormatter.swift in Sources */,
+				MS5IMGSURF01 /* ImageSurface.swift in Sources */,
+				MS5BRWSURF01 /* BrowserSurface.swift in Sources */,
+				MS5DEVDET01 /* DevServerDetector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

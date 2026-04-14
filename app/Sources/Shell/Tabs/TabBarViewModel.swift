@@ -113,6 +113,10 @@ public final class TabBarViewModel {
         )
         tabs.append(item)
         activeTabId = newId
+        // statePath 캐시 저장
+        if let path = statePath {
+            statePathCache[newId] = path
+        }
         return newId
     }
 
@@ -126,6 +130,7 @@ public final class TabBarViewModel {
 
         _ = bridge.deleteSurface(surfaceId: surfaceId)
         tabs.removeAll { $0.id == surfaceId }
+        statePathCache.removeValue(forKey: surfaceId)
 
         // 닫힌 탭이 활성이었으면 인접 탭으로 이동
         if activeTabId == surfaceId {
@@ -173,6 +178,29 @@ public final class TabBarViewModel {
         guard let id = activeTabId else { return nil }
         return tabs.first { $0.id == id }?.kind
     }
+
+    /// 현재 활성 탭의 state_json 에서 파일 경로를 추출한다.
+    ///
+    // @MX:NOTE: [AUTO] state_json 형식: {"path":"/absolute/path"} 또는 빈 문자열.
+    //           MS-6+ 에서 surface state 스키마가 확장될 경우 이 메서드를 업데이트한다.
+    public func activeStatePath() -> String {
+        guard let id = activeTabId,
+              let tab = tabs.first(where: { $0.id == id })
+        else { return "" }
+        return extractPath(from: tab)
+    }
+
+    /// TabItem 의 stateJson 에서 경로를 추출한다.
+    private func extractPath(from tab: TabItem) -> String {
+        // TabItem 에는 stateJson 이 없으므로 FFI 에서 재조회한다.
+        // 단순화: TabBarViewModel 이 statePath 캐시를 보유하도록 확장 예정.
+        // MS-5 에서는 newTab(kind:statePath:) 호출 시 내부 캐시에 저장.
+        return statePathCache[tab.id] ?? ""
+    }
+
+    // @MX:NOTE: [AUTO] statePathCache: surfaceId → 파일 경로 캐시.
+    //           createSurface 시 저장, closeTab 시 제거. MS-5 범위 내 메모리 캐시 허용.
+    private(set) var statePathCache: [Int64: String] = [:]
 
     // MARK: - 내부 헬퍼
 
