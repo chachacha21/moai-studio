@@ -51,6 +51,11 @@
 		MS5IMGTEST01 /* ImageViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5IMGTEST00 /* ImageViewModelTests.swift */; };
 		MS5BRWTEST01 /* BrowserViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5BRWTEST00 /* BrowserViewModelTests.swift */; };
 		MS5EARSTEST01 /* EARSFormatterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS5EARSTEST00 /* EARSFormatterTests.swift */; };
+		MS6CPVIEW01 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6CPVIEW00 /* CommandPaletteView.swift */; };
+		MS6CPREG01 /* CommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6CPREG00 /* CommandRegistry.swift */; };
+		MS6FUZZY01 /* FuzzyMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6FUZZY00 /* FuzzyMatcher.swift */; };
+		MS6SLASH01 /* SlashInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6SLASH00 /* SlashInjector.swift */; };
+		MS6CPTEST01 /* CommandPaletteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6CPTEST00 /* CommandPaletteTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,6 +125,11 @@
 		MS5IMGTEST00 /* ImageViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageViewModelTests.swift; sourceTree = "<group>"; };
 		MS5BRWTEST00 /* BrowserViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserViewModelTests.swift; sourceTree = "<group>"; };
 		MS5EARSTEST00 /* EARSFormatterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EARSFormatterTests.swift; sourceTree = "<group>"; };
+		MS6CPVIEW00 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
+		MS6CPREG00 /* CommandRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRegistry.swift; sourceTree = "<group>"; };
+		MS6FUZZY00 /* FuzzyMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzyMatcher.swift; sourceTree = "<group>"; };
+		MS6SLASH00 /* SlashInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashInjector.swift; sourceTree = "<group>"; };
+		MS6CPTEST00 /* CommandPaletteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -284,6 +294,17 @@
 			path = Tabs;
 			sourceTree = "<group>";
 		};
+		MS6CPGRP01 /* CommandPalette */ = {
+			isa = PBXGroup;
+			children = (
+				MS6CPVIEW00 /* CommandPaletteView.swift */,
+				MS6CPREG00 /* CommandRegistry.swift */,
+				MS6FUZZY00 /* FuzzyMatcher.swift */,
+				MS6SLASH00 /* SlashInjector.swift */,
+			);
+			path = CommandPalette;
+			sourceTree = "<group>";
+		};
 		955C5E1A82ED28BEE03BB85B /* Shell */ = {
 			isa = PBXGroup;
 			children = (
@@ -294,6 +315,7 @@
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* Splits */,
 				MS3TABS001 /* Tabs */,
 				C35BFED6CC6B90AE04383C45 /* Sidebar */,
+				MS6CPGRP01 /* CommandPalette */,
 			);
 			path = Shell;
 			sourceTree = "<group>";
@@ -313,6 +335,7 @@
 				MS5IMGTEST00 /* ImageViewModelTests.swift */,
 				MS5BRWTEST00 /* BrowserViewModelTests.swift */,
 				MS5EARSTEST00 /* EARSFormatterTests.swift */,
+				MS6CPTEST00 /* CommandPaletteTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -505,6 +528,7 @@
 				MS5IMGTEST01 /* ImageViewModelTests.swift in Sources */,
 				MS5BRWTEST01 /* BrowserViewModelTests.swift in Sources */,
 				MS5EARSTEST01 /* EARSFormatterTests.swift in Sources */,
+				MS6CPTEST01 /* CommandPaletteTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -542,6 +566,10 @@
 				MS5IMGSURF01 /* ImageSurface.swift in Sources */,
 				MS5BRWSURF01 /* BrowserSurface.swift in Sources */,
 				MS5DEVDET01 /* DevServerDetector.swift in Sources */,
+				MS6CPVIEW01 /* CommandPaletteView.swift in Sources */,
+				MS6CPREG01 /* CommandRegistry.swift in Sources */,
+				MS6FUZZY01 /* FuzzyMatcher.swift in Sources */,
+				MS6SLASH01 /* SlashInjector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

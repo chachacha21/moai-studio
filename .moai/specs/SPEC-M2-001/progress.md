@@ -396,13 +396,100 @@ MS-1 완료 시 테스트: 208개
 
 ---
 
+## MS-6 완료 현황
+
+| Task | 상태 | RED | GREEN | REFACTOR |
+|------|------|-----|-------|----------|
+| T-067 | 완료 | CommandPaletteTests RED | CommandPaletteView.swift + CommandPaletteController GREEN | - |
+| T-068 | 완료 | CommandRegistryTests RED | CommandRegistry.swift (4 카테고리 + 내장 명령어) GREEN | - |
+| T-069 | 완료 | FuzzyMatcherTests RED | FuzzyMatcher.swift (subsequence + prefix bonus) GREEN | - |
+| T-070 | 완료 | - | CommandPaletteView 키보드 네비게이션 (Escape/Enter/Up/Down) GREEN | - |
+| T-071 | 완료 | - | SlashInjector.swift (SlashInjecting 프로토콜 + 구현) GREEN | - |
+| T-072 | 완료 | - | CommandRegistry Surface/Workspace/Pane 명령어 등록 GREEN | - |
+| T-073 | 완료 | 21개 테스트 先 작성 (CommandPaletteControllerTests 9 + FuzzyMatcherTests 7 + CommandRegistryTests 5) | 전체 통과 GREEN | - |
+
+---
+
+## 테스트 결과 (MS-6 완료 후)
+
+- Rust: 218개 (변경 없음, 모두 통과)
+- Swift: 101개 (기존 80 + MS-6 신규 21개)
+  - CommandPaletteControllerTests: 9개
+  - FuzzyMatcherTests: 7개
+  - CommandRegistryTests: 5개
+
+---
+
+## 파일 변경 목록 (MS-6 신규/수정)
+
+### Rust 변경 없음 (MS-6 는 Swift 전용)
+- Rust 218개 테스트 그대로 유지
+
+### Swift 신규
+- `app/Sources/Shell/CommandPalette/CommandPaletteView.swift` — CommandPaletteController(@Observable) + CommandPaletteView + CommandRowView
+- `app/Sources/Shell/CommandPalette/CommandRegistry.swift` — PaletteCommand + PaneSplitDirection + CommandRegistry (4 카테고리)
+- `app/Sources/Shell/CommandPalette/FuzzyMatcher.swift` — FuzzyMatcher.Match + match() 알고리즘
+- `app/Sources/Shell/CommandPalette/SlashInjector.swift` — SlashInjecting 프로토콜 + SlashInjector 구현
+- `app/Tests/CommandPaletteTests.swift` — 21개 테스트
+
+### Swift 수정
+- `app/Sources/Shell/RootSplitView.swift` — Cmd+K (Button + .keyboardShortcut) + CommandPaletteView 오버레이 + setupPaletteController()
+- `app/MoAIStudio.xcodeproj/project.pbxproj` — MS6 신규 파일 5개 등록
+
+---
+
+## 품질 게이트 (MS-6)
+
+- [x] `cargo test --workspace`: 218/218 통과 (Rust 변경 없음)
+- [x] Xcode build-for-testing: ** TEST BUILD SUCCEEDED ** (0 errors)
+- [x] Swift 단위 테스트 (MoAIStudioTests): 101/101 통과 (기존 80 + MS-6 21개)
+
+## @MX 태그 추가 목록 (MS-6)
+
+| 파일 | 태그 | 설명 |
+|------|------|------|
+| `CommandPaletteView.swift` | ANCHOR × 1 | CommandPaletteController — 팔레트 상태 유일 소스 (fan_in>=3) |
+| `CommandPaletteView.swift` | NOTE × 1 | Cmd+K 캡처 전략 (Button + .keyboardShortcut) |
+| `CommandRegistry.swift` | ANCHOR × 1 | PaletteCommand 전체 목록 유일 소스 (fan_in>=3) |
+| `CommandRegistry.swift` | NOTE × 3 | /moai 슬래시 명령어, Surface 열기, Pane 분할 콜백 설명 |
+| `FuzzyMatcher.swift` | ANCHOR × 1 | Command Palette 검색 알고리즘 진입점 (fan_in>=3) |
+| `FuzzyMatcher.swift` | NOTE × 2 | 알고리즘 설명, 빈 쿼리 동작 |
+| `SlashInjector.swift` | NOTE × 1 | 슬래시 주입 라우팅 설명 |
+
+## 반복 로그 (MS-6)
+
+| 반복 | 완료 AC | 에러 수 |
+|------|---------|---------|
+| 11 (MS-6 Swift RED) | 0 (타입 미존재) | 0 (프로젝트 미등록) |
+| 12 (MS-6 Swift GREEN) | 7 (T-067~T-073) | 2 (onKeyPress modifier, NewWorkspaceSheet init) |
+| 13 (MS-6 컴파일 수정) | 7 (전체) | 0 |
+
+---
+
+## 중간 체크포인트 (2026-04-14) — MS-6 완료
+
+**Status**: MS-1~MS-6 완료, MS-7 잔여
+
+**테스트 통과**: 218 Rust + 101 Swift = 319/319 PASS
+
+**@MX 태그**: 48개 (MS-1~MS-5) + 9개 (MS-6) = 57개 누적
+
+**Scope 준수**: 43/43 task (100%, expansion 없음)
+
+**다음 단계**:
+- MS-7 (CI/CD + carry-over + E2E, 14 tasks)
+
+---
+
 ## 알려진 제한 사항
 
 - XCUITest (NSSplitView UI 상호작용): 서명 이슈 (C-1 carry-over) 로 UI 테스트 제외. 순수 모델 테스트만 검증.
-- TerminalSurface 에 WorkspaceSnapshot 미연결: MS-3 에서는 TerminalSurfacePlaceholder 를 표시. MS-6+ 에서 @Environment 로 workspace 주입 후 실제 TerminalSurface(workspace:) 로 교체 예정.
+- TerminalSurface 에 WorkspaceSnapshot 미연결: MS-3 에서는 TerminalSurfacePlaceholder 를 표시. MS-7 에서 @Environment 로 workspace 주입 후 실제 TerminalSurface(workspace:) 로 교체 예정.
 - 탭 재배치 (reorder): SwiftUI onDrag/onDrop 기반. NSCollectionView DnD 와 동작이 다를 수 있음. 수동 검증 필요.
-- SurfaceProtocol 이 View 를 상속하므로 associatedtype Body 를 암묵적으로 요구함. Swift 6 existential type 에서 `any SurfaceProtocol` 박싱 시 제약 있음. MS-6+ 에서 AnyView 래퍼 패턴 적용 예정.
-- MarkdownSurface: KaTeX/Mermaid CDN 의존 (오프라인 환경에서 수식/다이어그램 미렌더링). MS-6+ 에서 번들 내 정적 리소스로 교체 예정.
-- ImageDiffView: Vision VNFeaturePrintRequest 기반 근사 유사도 (진정한 SSIM 아님). MS-6+ 에서 픽셀 레벨 SSIM 구현 예정.
-- BrowserSurface: statePath 사용 안 함 (URL 은 DevServerDetector 또는 URL 바 입력으로만 결정). MS-6+ 에서 마지막 URL 영속 예정.
-- statePathCache: TabBarViewModel 메모리 내 캐시. 앱 재시작 시 소실. MS-6+ 에서 state_json DB 읽기로 교체 예정.
+- SurfaceProtocol 이 View 를 상속하므로 associatedtype Body 를 암묵적으로 요구함. Swift 6 existential type 에서 `any SurfaceProtocol` 박싱 시 제약 있음. MS-7 에서 AnyView 래퍼 패턴 적용 예정.
+- MarkdownSurface: KaTeX/Mermaid CDN 의존 (오프라인 환경에서 수식/다이어그램 미렌더링). MS-7 에서 번들 내 정적 리소스로 교체 예정.
+- ImageDiffView: Vision VNFeaturePrintRequest 기반 근사 유사도 (진정한 SSIM 아님). MS-7 에서 픽셀 레벨 SSIM 구현 예정.
+- BrowserSurface: statePath 사용 안 함. MS-7 에서 마지막 URL 영속 예정.
+- statePathCache: TabBarViewModel 메모리 내 캐시. 앱 재시작 시 소실. MS-7 에서 state_json DB 읽기로 교체 예정.
+- CommandPalette Surface 열기 콜백: onSurfaceOpen 이 현재 no-op. MS-7 에서 ActivePaneProvider @Environment 구현 후 TabBarViewModel.newTab(kind:) 연결 예정.
+- CommandPalette Pane 분할 콜백: onPaneSplit 이 현재 no-op. MS-7 에서 ActivePaneProvider 통해 PaneTreeModel.splitActive 연결 예정.
