@@ -1,6 +1,6 @@
 //
 //  PaneSplitView.swift
-//  NSSplitView binary tree 래퍼 (SPEC-M2-001 MS-2 T-038, T-040, T-041).
+//  NSSplitView binary tree 래퍼 (SPEC-M2-001 MS-2 T-038, T-040, T-041; MS-3 T-048).
 //
 //  @MX:ANCHOR: [AUTO] PaneTreeModel 을 NSSplitView 계층으로 렌더링하는 유일 진입점 (fan_in>=3)
 //  @MX:REASON: [AUTO] PaneContainer, RootSplitView(리팩터링), E2E 테스트 세 경로에서 사용
@@ -62,11 +62,14 @@ public struct PaneSplitView: NSViewRepresentable {
         return view
     }
 
-    /// leaf 노드: 플레이스홀더 뷰 (MS-3 에서 TabBarView 로 교체)
-    // @MX:NOTE: [AUTO] MS-3 까지는 pane id 를 표시하는 임시 뷰. SurfaceProtocol 연결 이후 교체.
+    /// leaf 노드: TabBarView + SurfaceRouter 를 포함하는 LeafPaneView (MS-3 T-048)
     private func makeLeafView(paneId: Int64, context: Context) -> NSView {
-        let placeholder = LeafPlaceholderView(paneId: paneId, activePaneId: $activePaneId)
-        let hosting = NSHostingView(rootView: placeholder)
+        let leafView = LeafPaneView(
+            paneId: paneId,
+            bridge: model.bridge,
+            activePaneId: $activePaneId
+        )
+        let hosting = NSHostingView(rootView: leafView)
         hosting.translatesAutoresizingMaskIntoConstraints = false
         return hosting
     }
@@ -170,45 +173,133 @@ private final class MoAISplitView: NSSplitView {
     }
 }
 
-// MARK: - LeafPlaceholderView
+// MARK: - LeafPaneView (MS-3)
 
-/// MS-3 이전 leaf pane 에 표시되는 임시 플레이스홀더 뷰.
-// @MX:NOTE: [AUTO] MS-3 에서 TabBarView + SurfaceProtocol 구현 후 이 뷰를 교체.
-struct LeafPlaceholderView: View {
+/// leaf pane 에 TabBarView + SurfaceRouter 를 렌더링하는 뷰 (T-048).
+///
+/// LeafPlaceholderView 를 대체한다.
+// @MX:NOTE: [AUTO] MS-3: TabBarViewModel 을 비동기 로드하여 TabBarView + SurfaceRouter 를 구성.
+//            MS-4+ 에서 WorkspaceSnapshot 을 @Environment 로 주입하여 TerminalSurface 실제 연결 예정.
+struct LeafPaneView: View {
     let paneId: Int64
+    let bridge: RustCoreBridging
     @Binding var activePaneId: Int64?
 
-    private var isActive: Bool { activePaneId == paneId }
+    @State private var tabModel: TabBarViewModel?
+
+    var isActive: Bool { activePaneId == paneId }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let model = tabModel {
+                // 탭 바
+                TabBarView(
+                    items: model.tabs,
+                    activeId: Binding(
+                        get: { model.activeTabId },
+                        set: { model.activeTabId = $0 }
+                    ),
+                    onNewTab: { _ = model.newTab() },
+                    onCloseTab: { _ = model.closeTab($0) },
+                    onReorder: { from, to in model.reorder(from: from, to: to) },
+                    onSelect: { model.selectTab($0) }
+                )
+                Divider()
+                // Surface 콘텐츠
+                SurfaceRouter(activeKind: model.activeTabKind(), paneId: paneId)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture { activePaneId = paneId }
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .task {
+                        let model = TabBarViewModel(paneId: paneId, bridge: bridge)
+                        await model.load()
+                        tabModel = model
+                    }
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 2)
+                .strokeBorder(
+                    isActive ? Color.accentColor.opacity(0.6) : Color.clear,
+                    lineWidth: 1
+                )
+        )
+    }
+}
+
+// MARK: - SurfaceRouter
+
+/// 활성 탭의 SurfaceKind 에 따라 해당 Surface 뷰를 선택하는 라우터.
+///
+/// MS-3: terminal 과 미구현 surface 를 처리한다.
+/// MS-4+: FileTree, Markdown, Image, Browser 각각의 실제 뷰로 교체한다.
+// @MX:NOTE: [AUTO] MS-4+ 에서 WorkspaceSnapshot 을 @Environment 로 주입 후
+//            TerminalSurface(workspace:) 로 교체한다. MS-3 에서는 placeholder 표시.
+struct SurfaceRouter: View {
+    let activeKind: SurfaceKind?
+    let paneId: Int64
+
+    var body: some View {
+        switch activeKind {
+        case .terminal, .none:
+            TerminalSurfacePlaceholder(paneId: paneId)
+        case .code, .markdown, .image, .browser,
+             .filetree, .agentRun, .kanban, .memory, .instructionsGraph:
+            NotYetImplementedSurface(kind: activeKind!)
+        }
+    }
+}
+
+// MARK: - TerminalSurfacePlaceholder
+
+/// MS-3 에서 terminal surface 를 대신하는 플레이스홀더.
+///
+/// MS-4+ 에서 WorkspaceSnapshot 주입 후 실제 TerminalSurface 로 교체 예정.
+// @MX:NOTE: [AUTO] MS-4+ 에서 제거: TerminalSurface(workspace:) 로 교체.
+struct TerminalSurfacePlaceholder: View {
+    let paneId: Int64
 
     var body: some View {
         ZStack {
-            // 활성 pane 강조 배경
-            RoundedRectangle(cornerRadius: 4)
-                .fill(isActive
-                    ? Color.accentColor.opacity(0.08)
-                    : Color(NSColor.windowBackgroundColor))
-
-            VStack(spacing: 8) {
-                Image(systemName: "square.split.2x1")
-                    .font(.system(size: 32))
-                    .foregroundColor(.secondary)
-                Text("Pane \(paneId)")
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                Text("MS-3 에서 Surface 연결 예정")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+            Color.black
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Terminal Surface")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.green)
+                Text("pane_id: \(paneId)")
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(.white)
+                Text("(MS-4 에서 실제 워크스페이스와 연결 예정)")
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
             }
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+    }
+}
+
+// MARK: - NotYetImplementedSurface
+
+/// MS-4+ 구현 예정 Surface 의 플레이스홀더.
+struct NotYetImplementedSurface: View {
+    let kind: SurfaceKind
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: kind.systemImage)
+                .font(.system(size: 32))
+                .foregroundStyle(.secondary)
+            Text("\(kind.defaultTitle) Surface")
+                .font(.headline)
+            Text("MS-4+ 구현 예정")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            activePaneId = paneId
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(isActive ? Color.accentColor : Color.clear, lineWidth: 1)
-        )
     }
 }
 

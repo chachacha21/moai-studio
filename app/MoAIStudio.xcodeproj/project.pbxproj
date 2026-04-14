@@ -14,10 +14,10 @@
 		412EF96432CBE76406ADA649 /* WindowStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D02C5A3321E51CDF4DA227E6 /* WindowStateTests.swift */; };
 		4619C2FEB0AF55203C8851BE /* MainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00223DCCC041D1ED3AE019C /* MainWindow.swift */; };
 		495D28553AC2CE947DF6395B /* moai-ffi.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D2ECC4A57D9D0BB7C99A2F /* moai-ffi.swift */; };
-		499D685E5FF14858D1D5B8D8 /* TerminalSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E89086EB5C10260453985F8 /* TerminalSurface.swift */; };
+		/* TerminalSurface.swift (구 위치) — MS-3 T-045 로 Surfaces/Terminal/ 로 이전. pbxproj 참조만 유지. */
 		52B13E3200736D3824EB99A0 /* WindowStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97145620FCA16219518DE913 /* WindowStateStore.swift */; };
 		52D29407A824690BF7D08534 /* WorkspaceViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 256FBC43583C48AF13D4AEB7 /* WorkspaceViewModelTests.swift */; };
-		5E5FB0B19901FDCA20E7C2AF /* TerminalFallback.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5C6B2BFAF37129F93BC4E83 /* TerminalFallback.swift */; };
+		/* TerminalFallback.swift (구 위치) — MS-3 T-045 로 Surfaces/Terminal/ 로 이전. */
 		61281BDBC1C793DC8D78146A /* TerminalBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF2915D43B15A2289BDB20D /* TerminalBackendTests.swift */; };
 		7021B018BD3A9055340FC047 /* ContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57F58AE5116A90123C87CF48 /* ContextMenu.swift */; };
 		7EA034310D6ACBA60E0B6C43 /* ContentArea.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9CA12E4F3DF608041EB780 /* ContentArea.swift */; };
@@ -34,6 +34,12 @@
 		55243FD5358745DE90E66970 /* PaneSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 340823AFE4B14387AE695148 /* PaneSplitView.swift */; };
 		78DC716651464287A66140E4 /* PaneContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E496A5964D2499CA1BC344A /* PaneContainer.swift */; };
 		FC9ED302A56C44B98DCE76DB /* PaneTreeModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6B1EA21D2C4E4DABEF46D3 /* PaneTreeModelTests.swift */; };
+		AA11BB22CC33DD44EE55FF66 /* SurfaceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF00 /* SurfaceProtocol.swift */; };
+		BB22CC33DD44EE55FF6600AA /* TerminalSurface_new.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB22CC33DD44EE55FF6600BB /* TerminalSurface_new.swift */; };
+		CC33DD44EE55FF6600AABB22 /* TerminalFallback_new.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC33DD44EE55FF6600AABB33 /* TerminalFallback_new.swift */; };
+		DD44EE55FF6600AABB22CC33 /* TabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD44EE55FF6600AABB22CC44 /* TabBarView.swift */; };
+		EE55FF6600AABB22CC33DD44 /* TabBarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE55FF6600AABB22CC33DD55 /* TabBarViewModel.swift */; };
+		FF6600AABB22CC33DD44EE55 /* TabBarViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6600AABB22CC33DD44EE66 /* TabBarViewModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -86,6 +92,12 @@
 		340823AFE4B14387AE695148 /* PaneSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneSplitView.swift; sourceTree = "<group>"; };
 		9E496A5964D2499CA1BC344A /* PaneContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneContainer.swift; sourceTree = "<group>"; };
 		2E6B1EA21D2C4E4DABEF46D3 /* PaneTreeModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneTreeModelTests.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF00 /* SurfaceProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurfaceProtocol.swift; sourceTree = "<group>"; };
+		BB22CC33DD44EE55FF6600BB /* TerminalSurface_new.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurface.swift; sourceTree = "<group>"; };
+		CC33DD44EE55FF6600AABB33 /* TerminalFallback_new.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalFallback.swift; sourceTree = "<group>"; };
+		DD44EE55FF6600AABB22CC44 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
+		EE55FF6600AABB22CC33DD55 /* TabBarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarViewModel.swift; sourceTree = "<group>"; };
+		FF6600AABB22CC33DD44EE66 /* TabBarViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -180,8 +192,36 @@
 				F4B0D7CB441857B83AC2E94C /* Bridge */,
 				955C5E1A82ED28BEE03BB85B /* Shell */,
 				2506C1A7A41C436F1F12882A /* ViewModels */,
+				MS3SURF001 /* Surfaces */,
 			);
 			path = Sources;
+			sourceTree = "<group>";
+		};
+		MS3SURF001 /* Surfaces */ = {
+			isa = PBXGroup;
+			children = (
+				AA11BB22CC33DD44EE55FF00 /* SurfaceProtocol.swift */,
+				MS3TERM001 /* Terminal */,
+			);
+			path = Surfaces;
+			sourceTree = "<group>";
+		};
+		MS3TERM001 /* Terminal */ = {
+			isa = PBXGroup;
+			children = (
+				BB22CC33DD44EE55FF6600BB /* TerminalSurface_new.swift */,
+				CC33DD44EE55FF6600AABB33 /* TerminalFallback_new.swift */,
+			);
+			path = Terminal;
+			sourceTree = "<group>";
+		};
+		MS3TABS001 /* Tabs */ = {
+			isa = PBXGroup;
+			children = (
+				DD44EE55FF6600AABB22CC44 /* TabBarView.swift */,
+				EE55FF6600AABB22CC33DD55 /* TabBarViewModel.swift */,
+			);
+			path = Tabs;
 			sourceTree = "<group>";
 		};
 		955C5E1A82ED28BEE03BB85B /* Shell */ = {
@@ -192,6 +232,7 @@
 				97145620FCA16219518DE913 /* WindowStateStore.swift */,
 				73919DE49D7FB70B0367DDB4 /* Content */,
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* Splits */,
+				MS3TABS001 /* Tabs */,
 				C35BFED6CC6B90AE04383C45 /* Sidebar */,
 			);
 			path = Shell;
@@ -206,6 +247,7 @@
 				D02C5A3321E51CDF4DA227E6 /* WindowStateTests.swift */,
 				256FBC43583C48AF13D4AEB7 /* WorkspaceViewModelTests.swift */,
 				2E6B1EA21D2C4E4DABEF46D3 /* PaneTreeModelTests.swift */,
+				FF6600AABB22CC33DD44EE66 /* TabBarViewModelTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -392,6 +434,7 @@
 				412EF96432CBE76406ADA649 /* WindowStateTests.swift in Sources */,
 				52D29407A824690BF7D08534 /* WorkspaceViewModelTests.swift in Sources */,
 				FC9ED302A56C44B98DCE76DB /* PaneTreeModelTests.swift in Sources */,
+				FF6600AABB22CC33DD44EE55 /* TabBarViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -409,8 +452,8 @@
 				1D8A2724B9D84405F45D04BE /* RustCore+Generated.swift in Sources */,
 				DCEE7C4E0DF25DF572F4E41F /* StatusIcon.swift in Sources */,
 				C5B7C94D4DDDC994940216E6 /* SwiftBridgeCore.swift in Sources */,
-				5E5FB0B19901FDCA20E7C2AF /* TerminalFallback.swift in Sources */,
-				499D685E5FF14858D1D5B8D8 /* TerminalSurface.swift in Sources */,
+				/* TerminalFallback.swift (구 위치) 제거됨 — Surfaces/Terminal 로 이전 (T-045) */
+				/* TerminalSurface.swift (구 위치) 제거됨 — Surfaces/Terminal 로 이전 (T-045) */
 				52B13E3200736D3824EB99A0 /* WindowStateStore.swift in Sources */,
 				3AF18A232B49DAB745E62B0E /* WorkspaceListView.swift in Sources */,
 				A5ABCB02F8573EEDC94814AB /* WorkspaceViewModel.swift in Sources */,
@@ -418,6 +461,11 @@
 				D6D20BEB37714F8191C9CDA1 /* PaneTreeModel.swift in Sources */,
 				55243FD5358745DE90E66970 /* PaneSplitView.swift in Sources */,
 				78DC716651464287A66140E4 /* PaneContainer.swift in Sources */,
+				AA11BB22CC33DD44EE55FF66 /* SurfaceProtocol.swift in Sources */,
+				BB22CC33DD44EE55FF6600AA /* TerminalSurface_new.swift in Sources */,
+				CC33DD44EE55FF6600AABB22 /* TerminalFallback_new.swift in Sources */,
+				DD44EE55FF6600AABB22CC33 /* TabBarView.swift in Sources */,
+				EE55FF6600AABB22CC33DD44 /* TabBarViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

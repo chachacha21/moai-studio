@@ -68,6 +68,7 @@ public protocol RustCoreBridging: AnyObject {
     // ── Surface FFI (MS-2/3) ─────────────────────────────────────────────────
     func listSurfacesJson(paneId: Int64) -> String
     func createSurface(paneId: Int64, kind: String, stateJson: String, tabOrder: Int64) -> Int64
+    func updateSurfaceTabOrder(surfaceId: Int64, tabOrder: Int64) -> Bool
     func deleteSurface(surfaceId: Int64) -> Bool
 
     // ── Workspace → DB id 변환 ───────────────────────────────────────────────
@@ -202,6 +203,10 @@ public final class RustCoreBridge: RustCoreBridging {
 
     public func createSurface(paneId: Int64, kind: String, stateJson: String, tabOrder: Int64) -> Int64 {
         core.create_surface(paneId, kind, stateJson, tabOrder)
+    }
+
+    public func updateSurfaceTabOrder(surfaceId: Int64, tabOrder: Int64) -> Bool {
+        core.update_surface_tab_order(surfaceId, tabOrder)
     }
 
     public func deleteSurface(surfaceId: Int64) -> Bool {

@@ -110,6 +110,18 @@ final class MockRustCoreBridge: RustCoreBridging {
         return surfaceIdCounter
     }
 
+    func updateSurfaceTabOrder(surfaceId: Int64, tabOrder: Int64) -> Bool {
+        guard var s = surfaces[surfaceId] else { return false }
+        surfaces[surfaceId] = MockSurfaceRecord(
+            id: s.id,
+            paneId: s.paneId,
+            kind: s.kind,
+            stateJson: s.stateJson,
+            tabOrder: tabOrder
+        )
+        return true
+    }
+
     func deleteSurface(surfaceId: Int64) -> Bool {
         guard surfaces[surfaceId] != nil else { return false }
         surfaces.removeValue(forKey: surfaceId)
@@ -151,5 +163,5 @@ struct MockSurfaceRecord {
     let paneId: Int64
     let kind: String
     let stateJson: String
-    let tabOrder: Int64
+    var tabOrder: Int64
 }

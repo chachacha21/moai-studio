@@ -71,9 +71,10 @@ public final class PaneTreeModel {
     /// 소속 워크스페이스 DB id
     public let workspaceId: Int64
 
-    // MARK: - 비공개
+    // MARK: - 내부
 
-    private let bridge: RustCoreBridging
+    /// PaneSplitView 의 LeafPaneView 에서 TabBarViewModel 초기화에 사용.
+    internal let bridge: RustCoreBridging
 
     // MARK: - 초기화
 
