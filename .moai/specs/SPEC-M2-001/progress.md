@@ -187,6 +187,24 @@ MS-1 완료 시 테스트: 208개
 | 3 (MS-3) | 0 (Swift RED - TabBarViewModelTests) | 0 (빌드 오류 없음) |
 | 4 (MS-3) | 6 (T-044~T-049) | 0 |
 
+---
+
+## 중간 체크포인트 (2026-04-14)
+
+**Status**: MS-1~MS-3 완료, MS-4~MS-7 잔여
+
+**테스트 통과**: 213 Rust + 41 Swift = 254/254 PASS
+
+**@MX 태그**: 22개 (MS-2) + 6개 (MS-3) = 28개 누적
+
+**Scope 준수**: 19/19 task (100%, expansion 없음)
+
+**다음 단계**:
+- MS-4 (FileTree + Markdown, 7 tasks)
+- MS-5 (Image + Browser, 10 tasks)
+- MS-6 (Command Palette, 7 tasks)
+- MS-7 (CI/CD + carry-over + E2E, 14 tasks)
+
 ## 알려진 제한 사항
 
 - XCUITest (NSSplitView UI 상호작용): 서명 이슈 (C-1 carry-over) 로 UI 테스트 제외. 순수 모델 테스트만 검증.
