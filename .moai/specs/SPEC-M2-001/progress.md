@@ -481,6 +481,117 @@ MS-1 완료 시 테스트: 208개
 
 ---
 
+## MS-7 완료 현황
+
+| Task | 상태 | 내용 |
+|------|------|------|
+| T-074 | 완료 | .github/workflows/ci-rust.yml (fmt/clippy/test/check) |
+| T-075 | 완료 | .github/workflows/ci-swift.yml (xcodebuild) |
+| T-076 | 완료 | xcframework 캐싱 (GhosttyKit + MoaiCore) |
+| T-077 | 완료 | C-1 UITest ad-hoc signing (부분 해소) + WORKFLOWS.md |
+| T-078 | 완료 | C-2 scripts/validate-claude-e2e.sh (opt-in) |
+| T-079 | 완료 | C-3 scripts/stress-test-4ws.sh + stress_4ws.rs (#[ignore]) |
+| T-080 | 완료 | C-4 GhosttyMetalBenchmarkTests 하네스 (TODO — 전체 측정 이월) |
+| T-081 | 완료 | C-5 이미 MS-2에서 해소 (JSON FFI 경로) |
+| T-082 | 완료 | C-6 RotatingAuthToken (moai-hook-http/src/auth.rs, 7 tests) |
+| T-083 | 완료 | C-7 FFIBenchmarkTests.swift (P95 < 1ms, 3 tests) |
+| T-084 | 완료 | C-8 WorkspaceDao::force_pause + state_force_pause.rs (4 tests) |
+| T-085 | 완료 | E2E Rust (e2e_viewers.rs 3 tests) + Swift UITest skeleton |
+| T-086 | 완료 | nfr-report.md |
+| T-087 | 완료 | m2-completion-report.md + spec.md v1.2.0 completed |
+
+---
+
+## 테스트 결과 (MS-7 완료 후)
+
+- Rust: 233개 (기존 218 + MS-7 신규 15개)
+  - auth.rs unit tests: 7개 (RotatingAuthToken)
+  - state_force_pause.rs: 4개 (force_pause)
+  - stress_4ws.rs: 2개 (smoke 1 + #[ignore] 1)
+  - e2e_viewers.rs: 3개 (M2 E2E)
+- Swift: 106개 (기존 101 + MS-7 신규 5개)
+  - FFIBenchmarkTests.swift: 3개
+  - GhosttyMetalBenchmarkTests.swift: 2개
+  - E2EViewersTests.swift: CI skip (UITest)
+
+---
+
+## 파일 변경 목록 (MS-7)
+
+### CI/CD 신규
+- `.github/workflows/ci-rust.yml`
+- `.github/workflows/ci-swift.yml`
+- `.github/WORKFLOWS.md`
+
+### Rust 신규
+- `core/crates/moai-hook-http/src/auth.rs` (C-6)
+- `core/crates/moai-store/tests/state_force_pause.rs` (C-8)
+- `core/crates/moai-ffi/tests/stress_4ws.rs` (C-3)
+- `core/crates/moai-ffi/tests/e2e_viewers.rs` (T-085)
+
+### Rust 수정
+- `core/crates/moai-hook-http/src/lib.rs` (auth 모듈 등록)
+- `core/crates/moai-store/src/workspace.rs` (force_pause API)
+
+### Swift 신규
+- `app/Tests/FFIBenchmarkTests.swift` (C-7)
+- `app/Tests/GhosttyMetalBenchmarkTests.swift` (C-4)
+- `app/UITests/E2EViewersTests.swift` (T-085)
+
+### Scripts 신규
+- `scripts/validate-claude-e2e.sh` (C-2)
+- `scripts/stress-test-4ws.sh` (C-3)
+
+### 문서
+- `.moai/specs/SPEC-M2-001/nfr-report.md`
+- `.moai/specs/SPEC-M2-001/m2-completion-report.md`
+- `.moai/specs/SPEC-M2-001/spec.md` (v1.2.0, status=completed)
+
+---
+
+## 품질 게이트 (MS-7)
+
+- [x] `cargo check --workspace`: 0 errors, 0 warnings
+- [x] `cargo clippy --workspace -- -D warnings`: clean
+- [x] `cargo fmt --all -- --check`: clean
+- [x] `cargo test --workspace`: 233/233 통과
+- [x] Xcode build-for-testing: ** TEST BUILD SUCCEEDED **
+- [x] Swift 단위 테스트: 106/106 통과
+
+## @MX 태그 추가 목록 (MS-7)
+
+| 파일 | 태그 | 설명 |
+|------|------|------|
+| `auth.rs` | ANCHOR | RotatingAuthToken — hook endpoint 인증 단일 소스 |
+| `auth.rs` | WARN | grace period 동안 이전 토큰 유효 |
+| `workspace.rs` | ANCHOR | force_pause — 관리자용 강제 일시정지 API |
+| `stress_4ws.rs` | NOTE | opt-in 스크립트, CI 자동 실행 아님 |
+| `GhosttyMetalBenchmarkTests.swift` | TODO | 전체 Metal fps 측정 이월 |
+| `E2EViewersTests.swift` | NOTE | CI skip (C-1 carry-over) |
+
+## 반복 로그 (MS-7)
+
+| 반복 | 완료 AC | 에러 수 |
+|------|---------|---------|
+| 14 (MS-7 RED) | 0 (파일 생성 전) | 0 |
+| 15 (MS-7 GREEN) | 14 (T-074~T-087) | 1 (clippy collapsible_if) |
+| 16 (MS-7 FIX) | 14 (전체) | 0 |
+
+---
+
+## 최종 체크포인트 (2026-04-14) — MS-7 완료 / M2 COMPLETE
+
+**Status**: MS-1~MS-7 전체 완료. SPEC-M2-001 **조건부 GO**
+
+**테스트 통과**: 233 Rust + 106 Swift = **339/339 PASS**
+
+**@MX 태그**: 57개 (MS-1~MS-6) + 6개 (MS-7) = **63개** 누적 (spec.md HISTORY 수정 반영: 69개)
+
+**Scope 준수**: 57/57 task (100%, expansion 없음)
+
+**Carry-over 해소**: C-5(MS-2), C-6(MS-7), C-7(MS-7), C-8(MS-7) — 4건 완전 해소
+**Carry-over 이월**: C-1(부분), C-2(opt-in), C-3(opt-in), C-4(하네스) — M3 예정
+
 ## 알려진 제한 사항
 
 - XCUITest (NSSplitView UI 상호작용): 서명 이슈 (C-1 carry-over) 로 UI 테스트 제외. 순수 모델 테스트만 검증.

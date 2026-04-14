@@ -1,0 +1,86 @@
+name: Swift CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/ci-swift.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+
+jobs:
+  swift:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
+
+      - name: Swift version
+        run: swift --version
+
+      # --- xcframework 캐싱 (T-076) ---
+      - name: Cache GhosttyKit
+        uses: actions/cache@v4
+        id: cache-ghostty
+        with:
+          path: app/Frameworks/GhosttyKit.xcframework
+          key: ghostty-${{ runner.os }}-${{ hashFiles('vendor/ghostty/**') }}
+
+      - name: Build GhosttyKit if not cached
+        if: steps.cache-ghostty.outputs.cache-hit != 'true'
+        run: ./scripts/build-ghostty-xcframework.sh
+        # Metal Toolchain 미설치 환경에서 실패 가능 (C-4 carry-over)
+        continue-on-error: true
+
+      - name: Cache Rust xcframework
+        uses: actions/cache@v4
+        id: cache-rust-xc
+        with:
+          path: app/Frameworks/MoaiCore.xcframework
+          key: rust-xc-${{ runner.os }}-${{ hashFiles('core/**/*.rs', 'core/**/Cargo.toml') }}
+
+      - name: Build Rust xcframework if not cached
+        if: steps.cache-rust-xc.outputs.cache-hit != 'true'
+        run: ./scripts/build-rust-xcframework.sh
+
+      # --- 유닛 테스트 (UITests 제외) ---
+      - name: xcodebuild build-for-testing
+        working-directory: app
+        run: |
+          xcodebuild \
+            -project MoAIStudio.xcodeproj \
+            -scheme MoAIStudio \
+            -destination 'platform=macOS' \
+            build-for-testing
+
+      - name: xcodebuild test-without-building
+        working-directory: app
+        run: |
+          xcodebuild \
+            -project MoAIStudio.xcodeproj \
+            -scheme MoAIStudio \
+            -destination 'platform=macOS' \
+            -skip-testing:MoAIStudioUITests \
+            test-without-building
+
+      # --- UITest ad-hoc 서명 (T-077, C-1 best-effort) ---
+      # 전체 UITest CI 는 Apple Developer Team ID secret 필요.
+      # Ad-hoc 서명으로 best-effort 실행; macOS 권한 다이얼로그로 실패 가능.
+      - name: UITest with ad-hoc signing (best-effort)
+        working-directory: app
+        continue-on-error: true
+        run: |
+          xcodebuild \
+            -project MoAIStudio.xcodeproj \
+            -scheme MoAIStudio \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE="Manual" \
+            CODE_SIGNING_ALLOWED="YES" \
+            test -only-testing:MoAIStudioUITests

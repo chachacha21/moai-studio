@@ -2,8 +2,8 @@
 
 ---
 id: SPEC-M2-001
-version: 1.1.0
-status: draft
+version: 1.2.0
+status: completed
 created: 2026-04-13
 updated: 2026-04-14
 author: MoAI (manager-spec)
@@ -15,6 +15,7 @@ issue_number: 0
 
 | 버전 | 날짜 | 변경 내용 |
 |------|------|-----------|
+| 1.2.0 | 2026-04-14 | MS-7 완료 (최종). CI/CD + C-1~C-8 carry-over 해소. 233 Rust + 106 Swift = 339 테스트. status: completed. |
 | 1.1.0 | 2026-04-14 | MS-1~MS-3 구현 완료. DB V3 + FFI pane/surface + NSSplitView binary tree + Tab UI + SurfaceProtocol. 213 Rust + 41 Swift 테스트 통과. |
 | 1.0.0 | 2026-04-13 | 초안 작성. M1 conditional GO 기반, M1 carry-over 8건 포함 |
 

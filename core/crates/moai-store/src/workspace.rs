@@ -154,6 +154,26 @@ impl WorkspaceDao {
         Ok(())
     }
 
+    /// 관리자 API: 정상 전이 규칙을 우회하여 강제로 Paused 상태로 설정.
+    ///
+    /// 앱 재시작 복원 시 dangling Running 상태를 처리하거나, UI 관리자 메뉴에서 긴급 정지할 때 사용.
+    // @MX:ANCHOR: [AUTO] 관리자용 강제 일시정지 API (fan_in>=3 예상)
+    // @MX:REASON: [AUTO] 재시작 복원(supervisor), UI 관리자 메뉴, 비상 정지 3곳에서 호출. 전이 규칙 우회이므로 신중히 사용.
+    pub fn force_pause(&self, id: i64) -> Result<WorkspaceRow, StoreError> {
+        // 존재 여부 확인
+        self.get(id)?.ok_or(StoreError::NotFound(id))?;
+        let guard = self.conn.lock().map_err(|_| StoreError::PoisonedLock)?;
+        let n = guard.execute(
+            "UPDATE workspaces SET status = ?1, updated_at = datetime('now') WHERE id = ?2",
+            params![WorkspaceStatus::Paused.as_str(), id],
+        )?;
+        if n == 0 {
+            return Err(StoreError::NotFound(id));
+        }
+        drop(guard);
+        self.get(id)?.ok_or(StoreError::NotFound(id))
+    }
+
     /// Soft delete — Deleted 상태로 전이.
     pub fn soft_delete(&self, id: i64) -> Result<(), StoreError> {
         self.update_status(id, WorkspaceStatus::Deleted)?;

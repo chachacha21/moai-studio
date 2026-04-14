@@ -56,6 +56,9 @@
 		MS6FUZZY01 /* FuzzyMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6FUZZY00 /* FuzzyMatcher.swift */; };
 		MS6SLASH01 /* SlashInjector.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6SLASH00 /* SlashInjector.swift */; };
 		MS6CPTEST01 /* CommandPaletteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS6CPTEST00 /* CommandPaletteTests.swift */; };
+		MS7FFIBENCH01 /* FFIBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS7FFIBENCH00 /* FFIBenchmarkTests.swift */; };
+		MS7METALBENCH01 /* GhosttyMetalBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS7METALBENCH00 /* GhosttyMetalBenchmarkTests.swift */; };
+		MS7E2EVIEWERS01 /* E2EViewersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS7E2EVIEWERS00 /* E2EViewersTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -130,6 +133,9 @@
 		MS6FUZZY00 /* FuzzyMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FuzzyMatcher.swift; sourceTree = "<group>"; };
 		MS6SLASH00 /* SlashInjector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashInjector.swift; sourceTree = "<group>"; };
 		MS6CPTEST00 /* CommandPaletteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteTests.swift; sourceTree = "<group>"; };
+		MS7FFIBENCH00 /* FFIBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFIBenchmarkTests.swift; sourceTree = "<group>"; };
+		MS7METALBENCH00 /* GhosttyMetalBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyMetalBenchmarkTests.swift; sourceTree = "<group>"; };
+		MS7E2EVIEWERS00 /* E2EViewersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EViewersTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -184,6 +190,7 @@
 			children = (
 				786814ED2E69ACAB17FA3983 /* E2EShellSmokeTests.swift */,
 				C64FB02331D560629179426F /* E2EWorkingShellTests.swift */,
+				MS7E2EVIEWERS00 /* E2EViewersTests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -336,6 +343,8 @@
 				MS5BRWTEST00 /* BrowserViewModelTests.swift */,
 				MS5EARSTEST00 /* EARSFormatterTests.swift */,
 				MS6CPTEST00 /* CommandPaletteTests.swift */,
+				MS7FFIBENCH00 /* FFIBenchmarkTests.swift */,
+				MS7METALBENCH00 /* GhosttyMetalBenchmarkTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -529,6 +538,8 @@
 				MS5BRWTEST01 /* BrowserViewModelTests.swift in Sources */,
 				MS5EARSTEST01 /* EARSFormatterTests.swift in Sources */,
 				MS6CPTEST01 /* CommandPaletteTests.swift in Sources */,
+				MS7FFIBENCH01 /* FFIBenchmarkTests.swift in Sources */,
+				MS7METALBENCH01 /* GhosttyMetalBenchmarkTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -579,6 +590,7 @@
 			files = (
 				E61D9EBF826F911116E9E1AC /* E2EShellSmokeTests.swift in Sources */,
 				912DCF39AD89A3BBFF2BF3C8 /* E2EWorkingShellTests.swift in Sources */,
+				MS7E2EVIEWERS01 /* E2EViewersTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
