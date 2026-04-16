@@ -106,6 +106,7 @@ moai-cli/                  ← 현 저장소 디렉토리 (→ moai-studio 로 �
 │   │   ├── Shell/
 │   │   │   ├── Sidebar/   ← 프로젝트 트리 (M1)
 │   │   │   ├── Splits/    ← NSSplitView binary tree (M2)
+│   │   │   │   └── ActivePaneProvider.swift ← 활성 pane 환경값 (M2.5) ✨
 │   │   │   ├── Tabs/      ← TabBarView + ViewModel (M2)
 │   │   │   └── CommandPalette/  ← Cmd+K overlay (M2)
 │   │   ├── Surfaces/
@@ -116,10 +117,10 @@ moai-cli/                  ← 현 저장소 디렉토리 (→ moai-studio 로 �
 │   │   │   └── Browser/   ← WKWebView + DevTools (M2)
 │   │   ├── ViewModels/    ← MVVM state management
 │   │   └── MoAIStudio/    ← 앱 리소스
-│   ├── Tests/             ← Swift unit tests (106 tests)
+│   ├── Tests/             ← Swift unit tests (130 tests, M2.5 증가)
 │   └── UITests/           ← XCUITest (준비 중)
 │
-├── core/                  ← **M1/M2 구현** Rust workspace (233 tests)
+├── core/                  ← **M1/M2 구현** Rust workspace (289 tests, M2.5 증가)
 │   ├── Cargo.toml         ← workspace manifest
 │   ├── crates/
 │   │   ├── moai-core/            ← facade crate (Swift 진입점)

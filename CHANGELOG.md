@@ -1,0 +1,107 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.2.5] — 2026-04-17
+
+### Added
+
+- **SPEC-M2-002**: ActivePaneProvider `@Environment` 패턴 도입 (`app/Sources/Shell/Splits/ActivePaneProvider.swift`)
+  - `ActivePaneContext` struct — 현재 활성 pane의 id, PaneTreeModel, WorkspaceSnapshot 관리
+  - `ActivePaneProviderKey` + `WorkspaceEnvironmentKey` — SwiftUI 환경값 주입
+  - `EnvironmentValues.activePane`, `EnvironmentValues.activeWorkspace` computed property
+  - 7개 Swift unit test (ActivePaneProviderTests.swift)
+
+- **SPEC-M2-002**: Command Palette `onSurfaceOpen` / `onPaneSplit` 콜백 실동작 활성화
+  - Cmd+K → "Open FileTree/Markdown/Image/Browser/Terminal" — 활성 pane에 새 탭 생성
+  - Cmd+K → "Split Pane Horizontally/Vertically" — 활성 pane 분할 + 새 pane 활성화
+  - 10개 Swift unit test (CommandPaletteSurfaceOpenTests.swift, CommandPalettePaneSplitTests.swift)
+
+- **SPEC-M2-002**: GhosttyHost Metal 렌더링 실연결
+  - `TerminalSurface(workspace:)` 가 `SurfaceRouter.terminal` 케이스에서 실제로 렌더링
+  - `PaneContainer` → `WorkspaceSnapshot` `.environment(\.activeWorkspace)` 주입
+  - `GhosttyHost.body` placeholder 텍스트 3줄 제거, 실제 GhosttyKit Metal surface 래핑
+  - 5개 Swift unit test (TerminalSurfaceEnvironmentTests.swift)
+
+- **신규 테스트**: 24개 Swift unit test 추가 (총 130/130 PASS, M2 기준 106개에서 증가)
+  - ActivePaneProviderTests (7건): 환경값 주입, leaf pane 검증, 중첩 override
+  - TerminalSurfaceEnvironmentTests (5건): workspace 주입, backend 분기, fallback
+  - CommandPaletteSurfaceOpenTests (6건): tabModel 등록, 5종 SurfaceKind, nil 케이스
+  - CommandPalettePaneSplitTests (4건): 수평/수직 분할, nil 케이스, 새 pane id 반영
+
+- **@MX 태그**: 신규 ANCHOR 2건, NOTE 6건 추가 / 기존 1건 갱신 / 제거 3건
+  - `ActivePaneProvider.swift` @MX:ANCHOR (`ActivePaneContext` struct, `EnvironmentValues.activePane`)
+  - `WorkspaceViewModel.swift` @MX:NOTE (activePane, tabModels 목적)
+  - `RootSplitView.swift` @MX:NOTE (onSurfaceOpen, onPaneSplit MS-3 완료)
+  - `TabBarViewModel.swift` @MX:ANCHOR 갱신 (fan_in 3→4)
+
+### Changed
+
+- **SPEC-M2-002**: PaneContainer, PaneSplitView, WorkspaceViewModel, RootSplitView 내부 구조 개선
+  - `PaneSplitContainerView` activePaneId 변경 시 `workspaceVM.activePane` 자동 동기화
+  - `LeafPaneView.task` 블록 — `TabBarViewModel` 생성 후 `workspaceVM.tabModels[paneId]` 등록
+  - `SurfaceRouter.terminal` 케이스 — `@Environment(\.activeWorkspace)` 주입으로 실 연결
+
+- **테스트 수 증가**: Rust 233 → 289 (+56), Swift 106 → 130 (+24), 총 339 → 419 (+80 tests)
+  - Rust 추가: `moai-ffi` JSON FFI 경로 테스트, M2.5 GhosttyHost 통합 검증 추가
+
+### Removed
+
+- **SPEC-M2-002**: TerminalSurfacePlaceholder struct 전량 제거
+  - `app/Sources/Shell/Content/TerminalFallback.swift` 삭제 (Surfaces/Terminal/로 통합)
+  - `app/Sources/Shell/Content/TerminalSurface.swift` (구 위치) 삭제 (신규 위치로 이동)
+  - `PaneSplitView.swift` — TerminalSurfacePlaceholder 호출 지점 제거
+
+- **SPEC-M2-002**: TODO(MS-7) 주석 전량 제거
+  - `RootSplitView.swift:79-82` onSurfaceOpen no-op 제거
+  - `RootSplitView.swift:86-89` onPaneSplit no-op 제거
+  - grep `TODO(MS-7)` 결과 0건
+
+- **구식 @MX:NOTE** 3건 제거
+  - "MS-3 이후 leaf 탭 교체" (완료)
+  - "MS-4+ workspace 연결" (완료)
+  - "MS-6+ resolveWorkspacePath" (불필요)
+
+## [0.2.0] — 2026-04-15 (M2 Complete, Conditional GO v1.2.0)
+
+### Added
+
+- **M2 Viewers**: FileTree, Markdown, Image, Browser surface 구현 (MS-1~MS-6)
+- **NSSplitView binary tree**: Pane 분할 UI 및 상태 관리 (MS-2)
+- **TabUI + CommandPalette**: 각 pane의 탭 관리, Cmd+K Palette (MS-3/MS-4)
+- **CI/CD**: GitHub Actions (ci-rust.yml, ci-swift.yml) 자동화 (MS-7)
+- **339 unit tests**: Rust 233 + Swift 106 = 339 tests PASS
+- **@MX 태그 시스템**: ANCHOR 11, WARN 3, NOTE 14 적용
+
+### Changed
+
+- **Store V3 마이그레이션**: M1 V2 → M2 V3 (panes, surfaces, tabs 테이블 신규)
+- **Swift-bridge FFI**: JSON FFI 우회로 Vectorizable 제약 해소 (C-5 해소)
+- **RotatingAuthToken**: 32-byte hex secure random + rotation (C-6)
+
+## [0.1.0] — 2026-04-11 (M1 Complete, Conditional GO)
+
+### Added
+
+- **Workspace/Pane/Surface DAO**: M1 Working Shell 핵심 (T-020~T-030)
+- **Sidebar**: 프로젝트 및 워크스페이스 탐색
+- **GhosttyKit integration**: Terminal surface 기초 구현 (placeholder 상태)
+- **106 Swift unit tests**: UI logic, ViewModel, Pane tree
+- **18 Hook events**: SessionStart, SessionEnd, PreToolUse, PostToolUse, ... (모두 http hook)
+- **Store V2 schema**: projects, workspaces, hook_events, cost_updates
+- **Rust core**: moai-supervisor, moai-claude-host, moai-stream-json, moai-ide-server, moai-hook-http, moai-store, moai-git, moai-fs
+
+### Known Limitations
+
+- Terminal surface 는 "Ghostty Metal surface will render here" placeholder 텍스트만 표시 (M2.5 해소)
+- Command Palette `onSurfaceOpen`, `onPaneSplit` 는 no-op (M2.5 해소)
+- Pane 분할 후 UI 갱신이 지연될 수 있음 (M2.5 ActivePaneProvider로 개선)
+
+---
+
+**Source of truth**: `.moai/project/product.md` · `.moai/specs/SPEC-M2-002/spec.md`

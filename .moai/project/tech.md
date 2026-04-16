@@ -380,9 +380,9 @@ DESIGN.v4 §12. M2 완료 시점.
 
 | 레벨 | 도구 | 대상 | M2 테스트 수 | 상태 |
 |---|---|---|---|---|
-| Rust unit | `cargo test` | moai-core 전 crate | 233 | ✅ PASS |
+| Rust unit | `cargo test` | moai-core 전 crate | 289 (M2.5) | ✅ PASS |
 | Rust integration | `cargo test --features mock-claude` | Mock Claude subprocess, stream-json codec, IDE MCP, hook HTTP roundtrip | 포함 | ✅ PASS |
-| Swift unit | **Swift Testing** | UI 로직, ViewModel, Pane tree, Tab management | 106 | ✅ PASS |
+| Swift unit | **Swift Testing** | UI 로직, ViewModel, Pane tree, Tab management, ActivePaneProvider, Command Palette | 130 (M2.5) | ✅ PASS |
 | UI snapshot | **XCUITest + swift-snapshot-testing** | Sidebar, Splits, Tabs, Surfaces (준비 중) | — | 📅 M3+ |
 | E2E | validate-claude-e2e.sh | Command Palette (opt-in, C-2) | — | 📅 선택 |
 | Stress | stress-test-4ws.sh | 4 workspace × 5분 (opt-in, C-3) | — | 📅 선택 |
