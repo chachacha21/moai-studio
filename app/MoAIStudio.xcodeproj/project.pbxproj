@@ -59,6 +59,11 @@
 		MS7FFIBENCH01 /* FFIBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS7FFIBENCH00 /* FFIBenchmarkTests.swift */; };
 		MS7METALBENCH01 /* GhosttyMetalBenchmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS7METALBENCH00 /* GhosttyMetalBenchmarkTests.swift */; };
 		MS7E2EVIEWERS01 /* E2EViewersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = MS7E2EVIEWERS00 /* E2EViewersTests.swift */; };
+		M25APP01 /* ActivePaneProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = M25APP00 /* ActivePaneProvider.swift */; };
+		M25APT01 /* ActivePaneProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M25APT00 /* ActivePaneProviderTests.swift */; };
+		M25TST01 /* TerminalSurfaceEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M25TST00 /* TerminalSurfaceEnvironmentTests.swift */; };
+		M25CST01 /* CommandPaletteSurfaceOpenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M25CST00 /* CommandPaletteSurfaceOpenTests.swift */; };
+		M25CPT01 /* CommandPalettePaneSplitTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = M25CPT00 /* CommandPalettePaneSplitTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -136,6 +141,11 @@
 		MS7FFIBENCH00 /* FFIBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FFIBenchmarkTests.swift; sourceTree = "<group>"; };
 		MS7METALBENCH00 /* GhosttyMetalBenchmarkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GhosttyMetalBenchmarkTests.swift; sourceTree = "<group>"; };
 		MS7E2EVIEWERS00 /* E2EViewersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EViewersTests.swift; sourceTree = "<group>"; };
+		M25APP00 /* ActivePaneProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivePaneProvider.swift; sourceTree = "<group>"; };
+		M25APT00 /* ActivePaneProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivePaneProviderTests.swift; sourceTree = "<group>"; };
+		M25TST00 /* TerminalSurfaceEnvironmentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSurfaceEnvironmentTests.swift; sourceTree = "<group>"; };
+		M25CST00 /* CommandPaletteSurfaceOpenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteSurfaceOpenTests.swift; sourceTree = "<group>"; };
+		M25CPT00 /* CommandPalettePaneSplitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPalettePaneSplitTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -220,6 +230,7 @@
 			children = (
 				EA66E649B52842C7A4D01A52 /* PaneTreeModel.swift */,
 				340823AFE4B14387AE695148 /* PaneSplitView.swift */,
+				M25APP00 /* ActivePaneProvider.swift */,
 			);
 			path = Splits;
 			sourceTree = "<group>";
@@ -345,6 +356,10 @@
 				MS6CPTEST00 /* CommandPaletteTests.swift */,
 				MS7FFIBENCH00 /* FFIBenchmarkTests.swift */,
 				MS7METALBENCH00 /* GhosttyMetalBenchmarkTests.swift */,
+				M25APT00 /* ActivePaneProviderTests.swift */,
+				M25TST00 /* TerminalSurfaceEnvironmentTests.swift */,
+				M25CST00 /* CommandPaletteSurfaceOpenTests.swift */,
+				M25CPT00 /* CommandPalettePaneSplitTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -540,6 +555,10 @@
 				MS6CPTEST01 /* CommandPaletteTests.swift in Sources */,
 				MS7FFIBENCH01 /* FFIBenchmarkTests.swift in Sources */,
 				MS7METALBENCH01 /* GhosttyMetalBenchmarkTests.swift in Sources */,
+				M25APT01 /* ActivePaneProviderTests.swift in Sources */,
+				M25TST01 /* TerminalSurfaceEnvironmentTests.swift in Sources */,
+				M25CST01 /* CommandPaletteSurfaceOpenTests.swift in Sources */,
+				M25CPT01 /* CommandPalettePaneSplitTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -581,6 +600,7 @@
 				MS6CPREG01 /* CommandRegistry.swift in Sources */,
 				MS6FUZZY01 /* FuzzyMatcher.swift in Sources */,
 				MS6SLASH01 /* SlashInjector.swift in Sources */,
+				M25APP01 /* ActivePaneProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

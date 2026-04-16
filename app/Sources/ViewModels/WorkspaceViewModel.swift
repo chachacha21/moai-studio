@@ -10,6 +10,7 @@
 
 import Foundation
 import Observation
+import SwiftUI
 
 /// 워크스페이스 상태 머신 + 이벤트 스트림을 @Observable 로 노출.
 ///
@@ -23,6 +24,16 @@ public final class WorkspaceViewModel {
 
     /// 최근 수신된 이벤트 (테스트 및 fallback 콘솔 표시에 사용).
     public private(set) var recentEvents: [String] = []
+
+    // @MX:NOTE: [AUTO] Command Palette 오버레이는 NavigationSplitView 트리 밖이므로
+    //           @Environment 대신 @Observable 프로퍼티 경로 사용.
+    //           PaneSplitContainerView 의 activePaneId 변경 훅이 이 값을 유지한다.
+    /// 현재 활성 pane 컨텍스트. Command Palette 콜백에서 소비된다.
+    public var activePane: ActivePaneContext = .empty
+
+    // @MX:NOTE: [AUTO] paneId → TabBarViewModel 사전. LeafPaneView.task 에서 등록, closePane 시 해제.
+    /// pane id → TabBarViewModel 매핑. `onSurfaceOpen` 콜백이 `newTab(kind:)` 를 호출하는 데 사용한다.
+    public internal(set) var tabModels: [Int64: TabBarViewModel] = [:]
 
     /// 폴링 간격. 16ms ≈ 60 Hz (spec §RG-M1-3 참조).
     public static let pollIntervalMs: Int = 16
@@ -84,6 +95,18 @@ public final class WorkspaceViewModel {
         // M1 에서는 자리만 확보. 실제 rename flow 는 MS-5 후속 태스크.
         // @MX:TODO: MS-5 에서 rename sheet UI 및 Rust FFI `rename_workspace` 연결.
         _ = workspaceId
+    }
+
+    // MARK: - TabModel 등록/해제 (MS-3 T-M2.5-010)
+
+    /// LeafPaneView 가 로드 완료 후 TabBarViewModel 을 등록한다.
+    public func registerTabModel(_ model: TabBarViewModel, forPane paneId: Int64) {
+        tabModels[paneId] = model
+    }
+
+    /// Pane close 시 해당 TabBarViewModel 등록을 해제한다.
+    public func unregisterTabModel(forPane paneId: Int64) {
+        tabModels.removeValue(forKey: paneId)
     }
 
     public func restartClaude(workspaceId: String) {

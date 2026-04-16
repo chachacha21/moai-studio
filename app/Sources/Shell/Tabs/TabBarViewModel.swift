@@ -2,9 +2,9 @@
 //  TabBarViewModel.swift
 //  pane 내 surface(탭) 목록 관리 + FFI 연동 (SPEC-M2-001 MS-3 T-047).
 //
-//  @MX:ANCHOR: [AUTO] pane 내 탭 상태의 유일한 소스 (fan_in>=3 예상)
-//  @MX:REASON: [AUTO] TabBarView, LeafPaneView, T-049 테스트 세 경로에서 참조.
-//              MS-4+ 에서 FileTree/Command Palette 등도 이 ViewModel 을 통해 탭을 조작한다.
+//  @MX:ANCHOR: [AUTO] pane 내 탭 상태의 유일한 소스 (fan_in>=4)
+//  @MX:REASON: [AUTO] TabBarView, LeafPaneView, T-049 테스트, RootSplitView (Command Palette) 네 경로에서 참조.
+//              MS-3 에서 Command Palette onSurfaceOpen 콜백이 newTab(kind:) 를 호출하는 경로 추가됨.
 //
 //  @MX:NOTE: [AUTO] 기본 탭 자동 생성 규칙:
 //            load() 후 pane 에 surface 가 하나도 없으면 Terminal surface 를 자동 생성한다.

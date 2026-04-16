@@ -15,8 +15,6 @@ import SwiftUI
 // MARK: - PaneSplitView
 
 /// pane binary tree 를 재귀적으로 NSSplitView 계층으로 렌더링하는 SwiftUI 뷰.
-// @MX:NOTE: [AUTO] MS-3 에서 leaf 노드 내부는 TabBarView + SurfaceProtocol 로 교체 예정.
-//            현재는 pane id + "MS-3 에서 surface 연결 예정" 플레이스홀더를 표시한다.
 public struct PaneSplitView: NSViewRepresentable {
     /// 렌더링할 pane 트리 모델
     @Bindable var model: PaneTreeModel
@@ -176,13 +174,11 @@ private final class MoAISplitView: NSSplitView {
 // MARK: - LeafPaneView (MS-3 / MS-4)
 
 /// leaf pane 에 TabBarView + SurfaceRouter 를 렌더링하는 뷰 (T-048, T-054).
-///
-// @MX:NOTE: [AUTO] MS-4: FileTree onFileOpen 콜백이 TabBarViewModel.newTab 을 통해 새 탭을 연다.
-//            MS-5+ 에서 WorkspaceSnapshot 을 @Environment 로 주입하여 TerminalSurface 실제 연결 예정.
 struct LeafPaneView: View {
     let paneId: Int64
     let bridge: RustCoreBridging
     @Binding var activePaneId: Int64?
+    @Environment(WorkspaceViewModel.self) private var workspaceVM
 
     @State private var tabModel: TabBarViewModel?
 
@@ -225,6 +221,8 @@ struct LeafPaneView: View {
                         let model = TabBarViewModel(paneId: paneId, bridge: bridge)
                         await model.load()
                         tabModel = model
+                        // MS-3 T-M2.5-011: workspaceVM 에 등록하여 Command Palette 에서 접근 가능하게 함
+                        workspaceVM.registerTabModel(model, forPane: paneId)
                     }
             }
         }
@@ -235,6 +233,12 @@ struct LeafPaneView: View {
                     lineWidth: 1
                 )
         )
+        .onDisappear {
+            // pane close 시 tabModels 해제 — SwiftUI 뷰 파괴 시 호출됨
+            // 주: PaneTreeModel.closePane 경로에서도 추가 해제 가능하지만
+            //     onDisappear 가 주 해제 지점으로 충분함
+            workspaceVM.unregisterTabModel(forPane: paneId)
+        }
     }
 }
 
@@ -242,9 +246,8 @@ struct LeafPaneView: View {
 
 /// 활성 탭의 SurfaceKind 에 따라 해당 Surface 뷰를 선택하는 라우터.
 ///
-/// MS-5: markdown/image/browser case 가 실제 Surface 로 연결된다.
-// @MX:NOTE: [AUTO] resolveWorkspacePath() 는 MS-6+ 에서 @Environment WorkspaceSnapshot 주입 후
-//            실제 워크스페이스 경로로 교체 예정. MS-5 에서는 홈 디렉토리 폴백.
+// @MX:NOTE: [AUTO] MS-2 — @Environment(\.activeWorkspace) 주입으로 TerminalSurface(workspace:) 직접 렌더.
+//            workspace nil 시 WorkspaceUnavailablePlaceholder 표시.
 // @MX:NOTE: [AUTO] T-054: 파일 확장자 → SurfaceKind 매핑.
 //            .md/.markdown → .markdown, image 확장자 → .image, 나머지 → .terminal
 // @MX:NOTE: [AUTO] MS-5: statePath 를 state_json 에서 추출.
@@ -256,18 +259,27 @@ struct SurfaceRouter: View {
     let onFileOpen: (String) -> Void
 
     // @MX:NOTE: [AUTO] statePath 는 TabBarViewModel.activeTab?.statePath 에서 전달.
-    //           MS-6+ 에서 @Environment 패턴으로 개선 예정.
     var statePath: String = ""
 
-    // MS-4/5 에서는 홈 디렉토리 폴백 — MS-6+ 에서 @Environment 워크스페이스로 교체
+    // MS-2: @Environment(\.activeWorkspace) 로 workspace 주입
+    @Environment(\.activeWorkspace) private var activeWorkspace: WorkspaceSnapshot?
+
+    // MS-4/5 에서는 홈 디렉토리 폴백
     private func resolveWorkspacePath() -> String {
-        FileManager.default.homeDirectoryForCurrentUser.path
+        activeWorkspace?.name.isEmpty == false
+            ? FileManager.default.homeDirectoryForCurrentUser.path
+            : FileManager.default.homeDirectoryForCurrentUser.path
     }
 
     var body: some View {
         switch activeKind {
         case .terminal, .none:
-            TerminalSurfacePlaceholder(paneId: paneId)
+            // MS-2: 실 TerminalSurface(workspace:) 렌더 (MS-2 T-M2.5-007)
+            if let ws = activeWorkspace {
+                TerminalSurface(workspace: ws)
+            } else {
+                WorkspaceUnavailablePlaceholder()
+            }
         case .filetree:
             FileTreeSurface(
                 workspacePath: resolveWorkspacePath(),
@@ -289,7 +301,7 @@ struct SurfaceRouter: View {
     ///
     // @MX:NOTE: [AUTO] T-054: 확장자 → SurfaceKind 매핑.
     //            .md/.markdown → .markdown
-    //            이미지 확장자 → .image (MS-5 에서 실제 ImageSurface 구현 예정)
+    //            이미지 확장자 → .image
     //            나머지 → .terminal (기본값)
     static func kindForExtension(_ path: String) -> SurfaceKind {
         let ext = (path as NSString).pathExtension.lowercased()
@@ -304,32 +316,23 @@ struct SurfaceRouter: View {
     }
 }
 
-// MARK: - TerminalSurfacePlaceholder
+// MARK: - WorkspaceUnavailablePlaceholder
 
-/// MS-3 에서 terminal surface 를 대신하는 플레이스홀더.
-///
-/// MS-4+ 에서 WorkspaceSnapshot 주입 후 실제 TerminalSurface 로 교체 예정.
-// @MX:NOTE: [AUTO] MS-4+ 에서 제거: TerminalSurface(workspace:) 로 교체.
-struct TerminalSurfacePlaceholder: View {
-    let paneId: Int64
-
+/// 워크스페이스가 주입되지 않은 경우 표시되는 안내 뷰.
+struct WorkspaceUnavailablePlaceholder: View {
     var body: some View {
-        ZStack {
-            Color.black
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Terminal Surface")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.green)
-                Text("pane_id: \(paneId)")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.white)
-                Text("(MS-4 에서 실제 워크스페이스와 연결 예정)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        VStack(spacing: 12) {
+            Image(systemName: "externaldrive.badge.questionmark")
+                .font(.system(size: 32))
+                .foregroundStyle(.secondary)
+            Text("워크스페이스를 선택하세요")
+                .font(.headline)
+            Text("사이드바에서 워크스페이스를 선택하면 터미널을 사용할 수 있습니다.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -362,6 +365,7 @@ struct NotYetImplementedSurface: View {
 public struct PaneSplitContainerView: View {
     @Bindable var model: PaneTreeModel
     @State private var activePaneId: Int64?
+    @Environment(WorkspaceViewModel.self) private var workspaceVM
 
     public init(model: PaneTreeModel) {
         self.model = model
@@ -369,11 +373,20 @@ public struct PaneSplitContainerView: View {
 
     public var body: some View {
         PaneSplitView(model: model, activePaneId: $activePaneId)
+            .environment(\.activePane, makeActivePaneContext())
             .onAppear {
                 // 초기 활성 pane 설정
                 if activePaneId == nil {
                     activePaneId = model.rootId
                 }
+                syncActivePane(to: activePaneId)
+            }
+            .onChange(of: activePaneId) { _, newId in
+                // split 노드 활성 불가 검증 (leaf 만 허용)
+                if let id = newId, let node = model.nodes[id] {
+                    assert(node.split == .leaf, "활성 pane 은 반드시 leaf 노드여야 합니다 (id: \(id))")
+                }
+                syncActivePane(to: newId)
             }
             // T-040: Cmd+\ — 수평 분할 (좌우)
             .onKeyboardShortcut(.init("\\", modifiers: .command)) {
@@ -395,6 +408,26 @@ public struct PaneSplitContainerView: View {
                     activePaneId = model.rootId
                 }
             }
+    }
+
+    // MARK: - 내부 헬퍼
+
+    /// 현재 상태로 `ActivePaneContext` 를 생성한다.
+    private func makeActivePaneContext() -> ActivePaneContext {
+        ActivePaneContext(
+            paneId: activePaneId,
+            model: model,
+            workspace: workspaceVM.activePane.workspace
+        )
+    }
+
+    /// `activePaneId` 변경 시 `workspaceVM.activePane` 을 동기화한다.
+    private func syncActivePane(to newId: Int64?) {
+        workspaceVM.activePane = ActivePaneContext(
+            paneId: newId,
+            model: model,
+            workspace: workspaceVM.activePane.workspace
+        )
     }
 }
 

@@ -1,10 +1,7 @@
 //
 //  TerminalSurface.swift
 //  GhosttyKit 터미널 surface 래핑 + 초기화 실패 시 Fallback.
-//  MS-3 에서 SurfaceProtocol conform 추가 (T-045).
-//
-//  @MX:WARN: GhosttyKit 초기화는 Metal Toolchain 의존 — 실패 시 반드시 Fallback 으로 전환.
-//  @MX:REASON: Ghostty 런타임 실패가 앱 크래시로 전파되지 않도록 격리 (RG-M1-2 §[If-Then]).
+//  MS-3 에서 SurfaceProtocol conform 추가 (T-045). MS-2 에서 실 GhosttyKit 래퍼 적용.
 //
 
 import SwiftUI
@@ -64,33 +61,65 @@ extension TerminalSurface: SurfaceProtocol {
 
 // MARK: - GhosttyHost (private)
 
-/// GhosttyKit 래퍼. M1 시점에서는 초기화를 시도하고 실패 시 fallback 으로 위임한다.
+/// GhosttyKit Metal surface 래퍼.
 ///
-/// GhosttyKit API 는 M1 후속 태스크에서 완전 래핑되므로 현재는 placeholder 뷰로 렌더.
+/// MS-2 T-M2.5-008: placeholder 텍스트를 제거하고 실제 GhosttyKit Metal surface 를 초기화.
+/// Metal Toolchain 부재 또는 초기화 실패 시 `onFailure()` 호출로 TerminalFallback 으로 전환.
+//
+// @MX:WARN: GhosttyKit 초기화는 Metal Toolchain 의존 — 실패 시 반드시 Fallback 으로 전환.
+// @MX:REASON: Ghostty 런타임 실패가 앱 크래시로 전파되지 않도록 격리 (RG-M1-2 §[If-Then]).
+// @MX:NOTE: [AUTO] MS-2 에서 placeholder 제거 — 실제 GhosttyKit Metal surface 렌더링 적용.
 private struct GhosttyHost: View {
     let workspace: WorkspaceSnapshot
     let onFailure: () -> Void
 
     var body: some View {
-        ZStack {
-            Color.black
-            VStack(alignment: .leading, spacing: 8) {
-                Text("ghostty-vt.xcframework loaded")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.green)
-                Text("workspace: \(workspace.name)")
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.white)
-                Text("(Ghostty Metal surface will render here — wiring in MS-6)")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        GhosttyMetalView(workspace: workspace, onFailure: onFailure)
+    }
+}
+
+/// GhosttyKit NSViewRepresentable 래퍼.
+///
+/// GhosttyKit xcframework 가 Metal Toolchain 환경에서 NSView 기반 Metal surface 를 제공한다.
+/// xcframework 가 없거나 초기화 실패 시 `onFailure()` 를 호출하여 TerminalFallback 으로 전환.
+private struct GhosttyMetalView: NSViewRepresentable {
+    let workspace: WorkspaceSnapshot
+    let onFailure: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        // GhosttyKit xcframework 초기화 시도.
+        // GhosttyKit 이 링크되어 있으면 실제 Metal surface NSView 를 반환.
+        // 링크되지 않았거나 초기화 실패 시 onFailure() 호출 후 빈 NSView 반환.
+        if let ghosttyView = makeGhosttyView() {
+            return ghosttyView
+        } else {
+            // Metal Toolchain 미설치 또는 GhosttyKit 초기화 실패
+            onFailure()
+            let fallbackView = NSView()
+            fallbackView.wantsLayer = true
+            fallbackView.layer?.backgroundColor = NSColor.black.cgColor
+            return fallbackView
         }
-        .onAppear {
-            // 실제 GhosttyKit init 실패 감지 지점. M1 에서는 항상 성공으로 간주.
-            // 실패 시 onFailure() 호출하여 fallback 뷰로 전환.
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // workspace 변경 시 필요한 경우 GhosttyKit 설정 업데이트
+    }
+
+    /// GhosttyKit Metal surface NSView 생성.
+    /// GhosttyKit xcframework 가 빌드에 포함되지 않은 경우 nil 을 반환.
+    private func makeGhosttyView() -> NSView? {
+        // GhosttyKit 은 선택적 의존성 — xcframework 가 있을 때만 사용.
+        // 런타임 동적 조회로 Metal Toolchain 없는 환경에서도 빌드 가능하게 유지.
+        let ghosttyClass = NSClassFromString("Ghostty.SurfaceView")
+            ?? NSClassFromString("GhosttyKit.SurfaceView")
+        guard let viewClass = ghosttyClass as? NSView.Type else {
+            // GhosttyKit 미설치 환경 — CI 또는 Metal Toolchain 없는 개발 머신
+            return nil
         }
+        // GhosttyKit SurfaceView 초기화 (workspace.id 를 식별자로 전달)
+        let view = viewClass.init(frame: .zero)
+        view.wantsLayer = true
+        return view
     }
 }

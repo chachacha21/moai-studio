@@ -10,6 +10,9 @@
 //             SwiftUI onKeyPress 의 modifier 파라미터는 macOS 15+ 에서만 지원됨.
 
 import SwiftUI
+import os.log
+
+private let logger = Logger(subsystem: "kr.mo.ai.moai-studio", category: "RootSplitView")
 
 struct RootSplitView: View {
     @Environment(WorkspaceViewModel.self) private var viewModel
@@ -76,19 +79,43 @@ struct RootSplitView: View {
                 let injector = SlashInjector(bridge: vm.bridge, workspaceVM: vm)
                 injector.inject(text)
             },
-            onSurfaceOpen: { _ in
-                // @MX:NOTE: [AUTO] Surface 열기 — MS-7 에서 ActivePaneProvider @Environment 로 교체.
-                // TODO(MS-7): ActivePaneProvider 통해 TabBarViewModel.newTab(kind:) 호출
+            onSurfaceOpen: { kind in
+                // @MX:NOTE: [AUTO] MS-3 완료 — workspaceVM.activePane 기반 TabBarViewModel.newTab(kind:) 호출.
+                guard let paneId = vm.activePane.paneId else {
+                    logger.info("Command Palette: onSurfaceOpen 무시 — 활성 pane 없음")
+                    return
+                }
+                guard let tabModel = vm.tabModels[paneId] else {
+                    logger.info("Command Palette: onSurfaceOpen 무시 — tabModels[\(paneId)] 미등록")
+                    return
+                }
+                _ = tabModel.newTab(kind: kind)
             },
             onWorkspaceCreate: {
                 showSheet()
             },
-            onPaneSplit: { _ in
-                // @MX:NOTE: [AUTO] Pane 분할 — MS-7 에서 ActivePaneProvider @Environment 로 교체.
-                // TODO(MS-7): PaneTreeModel.splitActive(activePaneId, direction:) 호출
+            onPaneSplit: { direction in
+                // @MX:NOTE: [AUTO] MS-3 완료 — workspaceVM.activePane.model.splitActive 호출. 키보드 단축키와 동일 호출 시퀀스.
+                guard let paneId = vm.activePane.paneId,
+                      let model = vm.activePane.model else {
+                    logger.info("Command Palette: onPaneSplit 무시 — 활성 pane 컨텍스트 없음")
+                    return
+                }
+                let splitKind = paneSplitKind(from: direction)
+                _ = model.splitActive(paneId, direction: splitKind)
             }
         )
 
         paletteController = CommandPaletteController(registry: registry)
+    }
+
+    // MARK: - 헬퍼
+
+    /// `PaneSplitDirection` → `SplitKind` 매핑.
+    private func paneSplitKind(from direction: PaneSplitDirection) -> SplitKind {
+        switch direction {
+        case .horizontal: return .horizontal
+        case .vertical:   return .vertical
+        }
     }
 }

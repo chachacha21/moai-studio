@@ -39,7 +39,10 @@ public struct PaneContainer: View {
     @ViewBuilder
     private func contentView(for workspaceId: String) -> some View {
         if let model = modelCache[workspaceId] {
+            // MS-2 T-M2.5-006: WorkspaceSnapshot 확보 후 하위 뷰에 .environment(\.activeWorkspace) 주입
+            let snapshot = workspaceVM.workspace(id: workspaceId)
             PaneSplitContainerView(model: model)
+                .environment(\.activeWorkspace, snapshot)
         } else {
             ProgressView("Pane 로드 중...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
