@@ -142,3 +142,26 @@ app/.build/
 
 # swift-bridge 생성 파일 (빌드 시 재생성)
 core/crates/moai-ffi/generated/
+
+# ============================================
+# v3 (GPUI + libghostty-vt) 관련 ignore
+# ============================================
+# Rust workspace
+target/
+Cargo.lock
+
+# Swift legacy archive 빌드 산출물 (reference only, never built)
+archive/swift-legacy/.build/
+archive/swift-legacy/Frameworks/ghostty-vt.xcframework/
+archive/swift-legacy/target/
+
+# swift-bridge 자동 생성 (v3 에서 미사용)
+crates/moai-ffi/generated/
+
+# macOS
+.DS_Store
+
+# pencil 렌더링 (참조만, git 미관리)
+pencil/*.png
+pencil/*.pdf
+pencil/*.tiff

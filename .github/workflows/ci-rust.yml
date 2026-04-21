@@ -1,35 +1,108 @@
-name: Rust CI
+name: Rust CI (v3)
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**']
     paths:
-      - 'core/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
       - '.github/workflows/ci-rust.yml'
   pull_request:
     paths:
-      - 'core/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/ci-rust.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: short
 
 jobs:
+  # ============================================================
+  # 3 플랫폼 매트릭스 빌드 (SPEC-V3-001 RG-V3-4)
+  # ============================================================
   rust:
-    runs-on: macos-14
+    name: ${{ matrix.platform.name }} (Rust ${{ matrix.rust }})
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable]
+        platform:
+          - { name: macOS,   runner: macos-14 }
+          - { name: Linux,   runner: ubuntu-22.04 }
+          # Windows 는 GPUI GA 이후 활성화 (SPEC-V3-001 Exclusions)
+          # - { name: Windows, runner: windows-2022 }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: v3-${{ matrix.platform.name }}
+
+      # TODO Phase 2 (SPEC-V3-002): Zig 0.15.x 설치 (libghostty-vt 빌드)
+      # - name: Install Zig
+      #   uses: mlugg/setup-zig@v1
+      #   with:
+      #     version: 0.15.1
+
+      # ============================================================
+      # 4 품질 게이트 (SPEC-V3-001 RG-V3-4 AC-4.1)
+      # ============================================================
+      - name: Gate 1 — cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Gate 2 — cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Gate 3 — cargo test
+        run: cargo test --workspace --all-targets
+
+      - name: Gate 4 — cargo build (release)
+        run: cargo build --release --bin moai-studio
+
+      # ============================================================
+      # 플러그인 토글 검증 (no-default-features = moai-adk off)
+      # ============================================================
+      - name: Plugin toggle — moai-adk off
+        run: cargo build --no-default-features --bin moai-studio
+
+  # ============================================================
+  # 스모크 실행 (바이너리 실제 런타임 검증)
+  # ============================================================
+  smoke:
+    name: Smoke (${{ matrix.platform.name }})
+    runs-on: ${{ matrix.platform.runner }}
+    needs: rust
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: macOS, runner: macos-14 }
+          - { name: Linux, runner: ubuntu-22.04 }
+
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: core -> target
-      - name: cargo fmt
-        working-directory: core
-        run: cargo fmt --all -- --check
-      - name: cargo clippy
-        working-directory: core
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: cargo test
-        working-directory: core
-        run: cargo test --workspace
-      - name: cargo check
-        working-directory: core
-        run: cargo check --workspace
+          key: v3-${{ matrix.platform.name }}
+
+      - name: Build scaffold binary
+        run: cargo build --release --bin moai-studio
+
+      - name: Run scaffold smoke
+        run: |
+          ./target/release/moai-studio 2>&1 | tee smoke.log
+          grep -q "Scaffold OK" smoke.log || exit 1
+          grep -q "moai-adk plugin: bundled" smoke.log || exit 1
