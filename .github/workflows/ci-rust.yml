@@ -14,6 +14,11 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/ci-rust.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-rust-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -102,7 +107,8 @@ jobs:
         run: cargo build --release --bin moai-studio
 
       - name: Run scaffold smoke
+        # --scaffold: GPUI 윈도우 생성을 건너뛰고 스캐폴드 로그만 출력 (headless CI runner 대응).
         run: |
-          ./target/release/moai-studio 2>&1 | tee smoke.log
-          grep -q "Scaffold OK" smoke.log || exit 1
-          grep -q "moai-adk plugin: bundled" smoke.log || exit 1
+          ./target/release/moai-studio --scaffold 2>&1 | tee smoke.log
+          grep -q "Scaffold OK" smoke.log || { echo "smoke: missing 'Scaffold OK'"; exit 1; }
+          grep -q "moai-adk plugin: bundled" smoke.log || { echo "smoke: missing 'moai-adk plugin: bundled'"; exit 1; }
