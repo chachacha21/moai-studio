@@ -1,21 +1,21 @@
 //! MoAI Studio UI 컴포넌트 라이브러리.
 //!
-//! Phase 1.2 (SPEC-V3-001 RG-V3-2) — 4 영역 레이아웃 (TitleBar/Sidebar/Body/StatusBar).
+//! Phase 1.6 (SPEC-V3-001 RG-V3-2) — Sidebar workspace 리스트 + active 하이라이트.
 //!
 //! ## 설계
-//! - `run_app()` 이 유일한 엔트리. `moai-studio-app` 바이너리가 호출.
+//! - `run_app(workspaces)` 이 유일한 엔트리. `moai-studio-app` 바이너리가 호출.
 //! - 윈도우 크기 1600×1000 (`system.md` §8 기본 크기)
 //! - 4 영역:
-//!   - TitleBar 44pt (상단)
-//!   - Sidebar 260pt (좌측) + Body (가변, 우측) (중앙)
+//!   - TitleBar 44pt (상단, 활성 워크스페이스 이름 표시)
+//!   - Sidebar 260pt (좌측, workspace 리스트) + Body (가변, 우측)
 //!   - StatusBar 28pt (하단)
-//! - 디자인 토큰 (`system.md` §4 색상) 직접 인라인
-//! - Phase 1.3 에서 Empty State CTA 본격 컨텐츠 추가
+//! - Empty state CTA 는 workspaces 가 비었을 때만 body 에 표시
 
 use gpui::{
     App, Application, Context, IntoElement, ParentElement, Render, Styled, Window, WindowOptions,
     div, prelude::*, px, rgb, size,
 };
+use moai_studio_workspace::Workspace;
 use tracing::info;
 
 // ============================================================
@@ -59,7 +59,38 @@ pub mod tokens {
 // Root view — 4 영역 레이아웃 컨테이너
 // ============================================================
 
-pub struct RootView;
+/// 앱 전역 상태 — Phase 1.6 에서는 최소한의 workspace 리스트 + active id.
+pub struct RootView {
+    pub workspaces: Vec<Workspace>,
+    pub active_id: Option<String>,
+}
+
+impl RootView {
+    pub fn new(workspaces: Vec<Workspace>) -> Self {
+        // 가장 최근 활성 워크스페이스를 자동 선택 (last_active 최댓값).
+        let active_id = workspaces
+            .iter()
+            .max_by_key(|w| w.last_active)
+            .map(|w| w.id.clone());
+        Self {
+            workspaces,
+            active_id,
+        }
+    }
+
+    /// 현재 활성 워크스페이스 레퍼런스.
+    pub fn active(&self) -> Option<&Workspace> {
+        let id = self.active_id.as_deref()?;
+        self.workspaces.iter().find(|w| w.id == id)
+    }
+
+    /// TitleBar 에 표시할 워크스페이스 이름 (없으면 placeholder).
+    pub fn title_label(&self) -> &str {
+        self.active()
+            .map(|w| w.name.as_str())
+            .unwrap_or("no workspace")
+    }
+}
 
 impl Render for RootView {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
@@ -68,8 +99,8 @@ impl Render for RootView {
             .flex_col()
             .size_full()
             .bg(rgb(tokens::BG_BASE))
-            .child(title_bar())
-            .child(main_body())
+            .child(title_bar(self.title_label()))
+            .child(main_body(&self.workspaces, self.active_id.as_deref()))
             .child(status_bar())
     }
 }
@@ -78,7 +109,7 @@ impl Render for RootView {
 // 1) TitleBar — 44pt 상단
 // ============================================================
 
-fn title_bar() -> impl IntoElement {
+fn title_bar(active_label: &str) -> impl IntoElement {
     div()
         .flex()
         .flex_row()
@@ -106,7 +137,7 @@ fn title_bar() -> impl IntoElement {
             div()
                 .text_sm()
                 .text_color(rgb(tokens::FG_SECONDARY))
-                .child("no workspace"),
+                .child(active_label.to_string()),
         )
 }
 
@@ -145,18 +176,18 @@ fn traffic_lights() -> impl IntoElement {
 // 2) Main Body — Sidebar 260pt + 컨텐츠 영역
 // ============================================================
 
-fn main_body() -> impl IntoElement {
+fn main_body(workspaces: &[Workspace], active_id: Option<&str>) -> impl IntoElement {
     div()
         .flex()
         .flex_row()
         .flex_grow()
         .w_full()
-        .child(sidebar())
-        .child(content_area())
+        .child(sidebar(workspaces, active_id))
+        .child(content_area(workspaces.is_empty()))
 }
 
 /// Sidebar 260pt — WORKSPACE + GIT WORKTREES + SPECs 섹션.
-fn sidebar() -> impl IntoElement {
+fn sidebar(workspaces: &[Workspace], active_id: Option<&str>) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
@@ -168,10 +199,7 @@ fn sidebar() -> impl IntoElement {
         .px_3()
         .py_4()
         .gap_4()
-        .child(sidebar_section(
-            "WORKSPACE",
-            vec![("No workspace yet", tokens::FG_MUTED)],
-        ))
+        .child(workspace_section(workspaces, active_id))
         .child(sidebar_section(
             "GIT WORKTREES",
             vec![("—", tokens::FG_DIM)],
@@ -216,9 +244,60 @@ fn sidebar_section(label: &'static str, items: Vec<(&'static str, u32)>) -> impl
     section
 }
 
-/// 컨텐츠 영역 — Phase 1.3 Empty State CTA (Create First / Start Sample / Open Recent).
-fn content_area() -> impl IntoElement {
+/// WORKSPACE 섹션 — 비었으면 placeholder, 있으면 각 워크스페이스 row 렌더.
+fn workspace_section(workspaces: &[Workspace], active_id: Option<&str>) -> impl IntoElement {
+    let mut section = div().flex().flex_col().gap_2().child(
+        div()
+            .text_xs()
+            .text_color(rgb(tokens::FG_MUTED))
+            .child("WORKSPACE"),
+    );
+
+    if workspaces.is_empty() {
+        section = section.child(
+            div()
+                .text_sm()
+                .text_color(rgb(tokens::FG_MUTED))
+                .px_2()
+                .py_1()
+                .child("No workspace yet"),
+        );
+    } else {
+        for ws in workspaces {
+            section = section.child(workspace_row(ws, active_id == Some(ws.id.as_str())));
+        }
+    }
+    section
+}
+
+/// 단일 워크스페이스 row — 컬러 dot + 이름. Active 시 하이라이트.
+fn workspace_row(ws: &Workspace, is_active: bool) -> impl IntoElement {
+    let bg = if is_active {
+        tokens::BG_SURFACE_3
+    } else {
+        tokens::BG_SURFACE
+    };
+    let fg = if is_active {
+        tokens::FG_PRIMARY
+    } else {
+        tokens::FG_SECONDARY
+    };
     div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap_2()
+        .px_2()
+        .py_1()
+        .rounded_md()
+        .bg(rgb(bg))
+        .child(div().w(px(8.)).h(px(8.)).rounded_full().bg(rgb(ws.color)))
+        .child(div().text_sm().text_color(rgb(fg)).child(ws.name.clone()))
+}
+
+/// 컨텐츠 영역 — workspace 가 비었을 때만 Empty State CTA 표시.
+fn content_area(show_empty_state: bool) -> impl IntoElement {
+    let mut area = div()
         .flex()
         .flex_col()
         .flex_grow()
@@ -227,11 +306,23 @@ fn content_area() -> impl IntoElement {
         .justify_center()
         .items_center()
         .gap_4()
-        .px_12()
-        .child(empty_state_hero())
-        .child(empty_state_primary_cta())
-        .child(empty_state_secondary_cta_row())
-        .child(empty_state_tip())
+        .px_12();
+    if show_empty_state {
+        area = area
+            .child(empty_state_hero())
+            .child(empty_state_primary_cta())
+            .child(empty_state_secondary_cta_row())
+            .child(empty_state_tip());
+    } else {
+        // 워크스페이스 선택된 상태의 플레이스홀더 — Phase 2+ 에서 터미널/에디터로 대체.
+        area = area.child(
+            div()
+                .text_sm()
+                .text_color(rgb(tokens::FG_MUTED))
+                .child("Workspace selected — terminal/editor coming in Phase 2"),
+        );
+    }
+    area
 }
 
 /// Hero: 큰 환영 제목 + 서브타이틀.
@@ -360,10 +451,13 @@ fn status_bar() -> impl IntoElement {
 // 앱 엔트리
 // ============================================================
 
-pub fn run_app() {
-    info!("moai-studio-ui: GPUI Application 시작 (Phase 1.2 — 4 영역 레이아웃)");
+pub fn run_app(workspaces: Vec<Workspace>) {
+    info!(
+        "moai-studio-ui: GPUI Application 시작 (Phase 1.6 — workspaces={})",
+        workspaces.len()
+    );
 
-    Application::new().run(|cx: &mut App| {
+    Application::new().run(move |cx: &mut App| {
         let bounds = gpui::Bounds::centered(None, size(px(1600.), px(1000.)), cx);
         let options = WindowOptions {
             window_bounds: Some(gpui::WindowBounds::Windowed(bounds)),
@@ -375,7 +469,8 @@ pub fn run_app() {
             ..Default::default()
         };
 
-        cx.open_window(options, |_window, cx| cx.new(|_cx| RootView))
+        let ws = workspaces.clone();
+        cx.open_window(options, move |_window, cx| cx.new(|_cx| RootView::new(ws)))
             .expect("GPUI 윈도우 생성 실패");
 
         cx.activate(true);
@@ -385,5 +480,52 @@ pub fn run_app() {
 
 /// 스캐폴드 hello 유지 (non-GPUI 경로용).
 pub fn hello() {
-    info!("moai-studio-ui: scaffold entry. GPUI 엔트리는 run_app()");
+    info!("moai-studio-ui: scaffold entry. GPUI 엔트리는 run_app(workspaces)");
+}
+
+// ============================================================
+// 유닛 테스트 — RootView 상태 로직 (GPUI 렌더 제외)
+// ============================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn make_ws(name: &str, id_suffix: &str, last_active: u64) -> Workspace {
+        Workspace {
+            id: format!("ws-{}", id_suffix),
+            name: name.to_string(),
+            project_path: PathBuf::from(format!("/tmp/{}", name)),
+            moai_config: PathBuf::from(".moai"),
+            color: 0xff6a3d,
+            last_active,
+        }
+    }
+
+    #[test]
+    fn root_view_empty_workspaces_has_no_active_and_placeholder_label() {
+        let view = RootView::new(vec![]);
+        assert!(view.active_id.is_none());
+        assert!(view.active().is_none());
+        assert_eq!(view.title_label(), "no workspace");
+    }
+
+    #[test]
+    fn root_view_picks_most_recently_active_workspace_as_active() {
+        let older = make_ws("alpha", "1", 1_000);
+        let newer = make_ws("beta", "2", 9_000);
+        let view = RootView::new(vec![older, newer.clone()]);
+        assert_eq!(view.active_id.as_deref(), Some(newer.id.as_str()));
+        assert_eq!(view.title_label(), "beta");
+        assert_eq!(view.active().map(|w| w.name.as_str()), Some("beta"));
+    }
+
+    #[test]
+    fn root_view_active_returns_none_when_active_id_missing() {
+        let mut view = RootView::new(vec![make_ws("alpha", "1", 1_000)]);
+        view.active_id = Some("ws-does-not-exist".to_string());
+        assert!(view.active().is_none());
+        assert_eq!(view.title_label(), "no workspace");
+    }
 }

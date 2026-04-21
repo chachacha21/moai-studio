@@ -14,3 +14,6 @@ thiserror = { workspace = true }
 # crates.io 0.2.2 는 2025 년 배포. git main 은 core-foundation exact pin 충돌 발생.
 # 안정 경로: 0.2.2 로 시작 → Phase 7+ 에서 Zed GPUI 최신으로 마이그레이션.
 gpui = "0.2"
+
+# Phase 1.6 (SPEC-V3-001 RG-V3-2): Sidebar 에 워크스페이스 리스트 렌더.
+moai-studio-workspace = { path = "../moai-studio-workspace" }

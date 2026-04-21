@@ -49,6 +49,22 @@ fn main() {
         return;
     }
 
+    // Phase 1.6: 저장된 workspace 리스트 로드 (실패 시 빈 리스트로 fallback).
+    let workspaces = match moai_studio_workspace::WorkspacesStore::load_default() {
+        Ok(store) => {
+            info!(
+                "workspaces loaded: {} items from {}",
+                store.list().len(),
+                store.path().display()
+            );
+            store.list().to_vec()
+        }
+        Err(e) => {
+            tracing::warn!("workspace store load 실패, 빈 리스트로 fallback: {e}");
+            Vec::new()
+        }
+    };
+
     // GPUI 윈도우 오픈 (blocks until app 종료)
-    moai_studio_ui::run_app();
+    moai_studio_ui::run_app(workspaces);
 }
