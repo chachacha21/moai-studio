@@ -1,12 +1,16 @@
 //! MoAI Studio UI 컴포넌트 라이브러리.
 //!
-//! Phase 1 (SPEC-V3-001 RG-V3-2) — GPUI 기반 윈도우 + 4 영역 레이아웃.
+//! Phase 1.2 (SPEC-V3-001 RG-V3-2) — 4 영역 레이아웃 (TitleBar/Sidebar/Body/StatusBar).
 //!
 //! ## 설계
 //! - `run_app()` 이 유일한 엔트리. `moai-studio-app` 바이너리가 호출.
 //! - 윈도우 크기 1600×1000 (`system.md` §8 기본 크기)
-//! - 디자인 토큰 (`system.md` §4 색상) 직접 인라인 (GPUI `rgb(0x...)`)
-//! - Phase 1.2 에서 4 영역 (TitleBar 44pt / Sidebar 260pt / Body / StatusBar 28pt) 확장
+//! - 4 영역:
+//!   - TitleBar 44pt (상단)
+//!   - Sidebar 260pt (좌측) + Body (가변, 우측) (중앙)
+//!   - StatusBar 28pt (하단)
+//! - 디자인 토큰 (`system.md` §4 색상) 직접 인라인
+//! - Phase 1.3 에서 Empty State CTA 본격 컨텐츠 추가
 
 use gpui::{
     App, Application, Context, IntoElement, ParentElement, Render, Styled, Window, WindowOptions,
@@ -14,19 +18,47 @@ use gpui::{
 };
 use tracing::info;
 
-/// Design tokens — `system.md` §4 dark primary.
+// ============================================================
+// Design tokens — `system.md` §4 dark primary.
+// ============================================================
+
 pub mod tokens {
+    /// 기본 배경 (윈도우 전체)
     pub const BG_BASE: u32 = 0x0a0a0b;
+    /// 1차 surface (TitleBar, Sidebar, StatusBar, 카드)
     pub const BG_SURFACE: u32 = 0x131315;
+    /// 2차 surface (hover, selected row)
     pub const BG_SURFACE_2: u32 = 0x1b1b1e;
+    /// 3차 surface (active row)
+    pub const BG_SURFACE_3: u32 = 0x232327;
+
+    /// 제목 / 강조 텍스트
     pub const FG_PRIMARY: u32 = 0xf4f4f5;
+    /// 본문
     pub const FG_SECONDARY: u32 = 0xb5b5bb;
+    /// 메타 / 캡션 / 힌트
     pub const FG_MUTED: u32 = 0x6b6b73;
+    /// 비활성
+    pub const FG_DIM: u32 = 0x3f3f46;
+
+    /// 기본 경계선
     pub const BORDER_SUBTLE: u32 = 0x2a2a2e;
+    /// 강조 경계 (modal 등)
+    pub const BORDER_STRONG: u32 = 0x3a3a40;
+
+    /// MoAI 브랜드 오렌지
     pub const ACCENT_MOAI: u32 = 0xff6a3d;
+
+    /// macOS traffic lights
+    pub const TRAFFIC_RED: u32 = 0xff5f57;
+    pub const TRAFFIC_YELLOW: u32 = 0xfebc2e;
+    pub const TRAFFIC_GREEN: u32 = 0x28c840;
 }
 
-/// Root view — Phase 1.1 "Hello World". Phase 1.2 에서 4 영역 레이아웃으로 확장.
+// ============================================================
+// Root view — 4 영역 레이아웃 컨테이너
+// ============================================================
+
 pub struct RootView;
 
 impl Render for RootView {
@@ -36,37 +68,241 @@ impl Render for RootView {
             .flex_col()
             .size_full()
             .bg(rgb(tokens::BG_BASE))
-            .justify_center()
-            .items_center()
-            .gap_4()
-            .child(
-                div()
-                    .text_2xl()
-                    .text_color(rgb(tokens::FG_PRIMARY))
-                    .child("MoAI Studio"),
-            )
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(tokens::FG_MUTED))
-                    .child("v3 Phase 1.1 — GPUI scaffold"),
-            )
-            .child(
-                div()
-                    .mt_8()
-                    .px_6()
-                    .py_2()
-                    .rounded_md()
-                    .bg(rgb(tokens::ACCENT_MOAI))
-                    .text_color(rgb(0xffffff))
-                    .child("Create First Workspace"),
-            )
+            .child(title_bar())
+            .child(main_body())
+            .child(status_bar())
     }
 }
 
-/// 엔트리 — GPUI Application 생성 + 윈도우 오픈.
+// ============================================================
+// 1) TitleBar — 44pt 상단
+// ============================================================
+
+fn title_bar() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .w_full()
+        .h(px(44.))
+        .px_4()
+        .gap_3()
+        .bg(rgb(tokens::BG_SURFACE))
+        .border_b_1()
+        .border_color(rgb(tokens::BORDER_SUBTLE))
+        // 좌측 — traffic lights placeholder (native 윈도우 chrome 사용 시 숨김 가능)
+        .child(traffic_lights())
+        // 프로젝트 이름 (현재 활성 워크스페이스)
+        .child(
+            div()
+                .text_sm()
+                .text_color(rgb(tokens::FG_PRIMARY))
+                .child("MoAI Studio"),
+        )
+        // 구분자
+        .child(div().text_sm().text_color(rgb(tokens::FG_DIM)).child("/"))
+        // 활성 워크스페이스 이름 (empty state 시에는 placeholder)
+        .child(
+            div()
+                .text_sm()
+                .text_color(rgb(tokens::FG_SECONDARY))
+                .child("no workspace"),
+        )
+}
+
+/// macOS 전용 traffic lights (red/yellow/green). GPUI 자체 타이틀바 사용 시 생략 가능하나
+/// 브랜드 일관성을 위해 인라인 렌더링.
+fn traffic_lights() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap_2()
+        .child(
+            div()
+                .w(px(12.))
+                .h(px(12.))
+                .rounded_full()
+                .bg(rgb(tokens::TRAFFIC_RED)),
+        )
+        .child(
+            div()
+                .w(px(12.))
+                .h(px(12.))
+                .rounded_full()
+                .bg(rgb(tokens::TRAFFIC_YELLOW)),
+        )
+        .child(
+            div()
+                .w(px(12.))
+                .h(px(12.))
+                .rounded_full()
+                .bg(rgb(tokens::TRAFFIC_GREEN)),
+        )
+}
+
+// ============================================================
+// 2) Main Body — Sidebar 260pt + 컨텐츠 영역
+// ============================================================
+
+fn main_body() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_row()
+        .flex_grow()
+        .w_full()
+        .child(sidebar())
+        .child(content_area())
+}
+
+/// Sidebar 260pt — WORKSPACE + GIT WORKTREES + SPECs 섹션.
+fn sidebar() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_col()
+        .w(px(260.))
+        .h_full()
+        .bg(rgb(tokens::BG_SURFACE))
+        .border_r_1()
+        .border_color(rgb(tokens::BORDER_SUBTLE))
+        .px_3()
+        .py_4()
+        .gap_4()
+        .child(sidebar_section(
+            "WORKSPACE",
+            vec![("No workspace yet", tokens::FG_MUTED)],
+        ))
+        .child(sidebar_section(
+            "GIT WORKTREES",
+            vec![("—", tokens::FG_DIM)],
+        ))
+        .child(sidebar_section("SPECS", vec![("—", tokens::FG_DIM)]))
+        // 하단 "+" New Workspace 버튼 (Phase 1.4 에서 실동작)
+        .child(div().flex_grow()) // 채움
+        .child(
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap_2()
+                .px_2()
+                .py_2()
+                .rounded_md()
+                .bg(rgb(tokens::BG_SURFACE_2))
+                .text_color(rgb(tokens::FG_SECONDARY))
+                .text_sm()
+                .child("+ New Workspace"),
+        )
+}
+
+/// Sidebar 내부 섹션 (ALL-CAPS 라벨 + 항목 리스트).
+fn sidebar_section(label: &'static str, items: Vec<(&'static str, u32)>) -> impl IntoElement {
+    let mut section = div().flex().flex_col().gap_2().child(
+        div()
+            .text_xs()
+            .text_color(rgb(tokens::FG_MUTED))
+            .child(label),
+    );
+    for (text, color) in items {
+        section = section.child(
+            div()
+                .text_sm()
+                .text_color(rgb(color))
+                .px_2()
+                .py_1()
+                .child(text),
+        );
+    }
+    section
+}
+
+/// 컨텐츠 영역 — Empty State (Phase 1.3 에서 본격 CTA 확장).
+fn content_area() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_col()
+        .flex_grow()
+        .h_full()
+        .bg(rgb(tokens::BG_BASE))
+        .justify_center()
+        .items_center()
+        .gap_4()
+        .child(
+            div()
+                .text_3xl()
+                .text_color(rgb(tokens::FG_PRIMARY))
+                .child("Welcome to MoAI Studio"),
+        )
+        .child(
+            div()
+                .text_sm()
+                .text_color(rgb(tokens::FG_MUTED))
+                .child("SPEC-first native shell for Claude Code agents"),
+        )
+        .child(
+            div()
+                .mt_4()
+                .px_6()
+                .py_2()
+                .rounded_md()
+                .bg(rgb(tokens::ACCENT_MOAI))
+                .text_color(rgb(0xffffff))
+                .child("Create First Workspace"),
+        )
+        .child(
+            div()
+                .mt_4()
+                .text_xs()
+                .text_color(rgb(tokens::FG_MUTED))
+                .child("Tip: ⌘K opens Command Palette anytime"),
+        )
+}
+
+// ============================================================
+// 3) StatusBar — 28pt 하단
+// ============================================================
+
+fn status_bar() -> impl IntoElement {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .w_full()
+        .h(px(28.))
+        .px_3()
+        .gap_3()
+        .bg(rgb(tokens::BG_SURFACE_2))
+        .border_t_1()
+        .border_color(rgb(tokens::BORDER_SUBTLE))
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(tokens::FG_MUTED))
+                .child("no git"),
+        )
+        .child(div().text_xs().text_color(rgb(tokens::FG_DIM)).child("·"))
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(tokens::FG_MUTED))
+                .child("moai-studio v0.1.0"),
+        )
+        .child(div().flex_grow())
+        // 우측 — ⌘K 힌트 (Command Palette 발견성)
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(tokens::FG_MUTED))
+                .child("⌘K to search"),
+        )
+}
+
+// ============================================================
+// 앱 엔트리
+// ============================================================
+
 pub fn run_app() {
-    info!("moai-studio-ui: GPUI Application 시작 (Phase 1.1)");
+    info!("moai-studio-ui: GPUI Application 시작 (Phase 1.2 — 4 영역 레이아웃)");
 
     Application::new().run(|cx: &mut App| {
         let bounds = gpui::Bounds::centered(None, size(px(1600.), px(1000.)), cx);
@@ -84,11 +320,11 @@ pub fn run_app() {
             .expect("GPUI 윈도우 생성 실패");
 
         cx.activate(true);
-        info!("moai-studio-ui: RootView 렌더 등록 완료");
+        info!("moai-studio-ui: RootView 렌더 등록 완료 (TitleBar/Sidebar/Body/StatusBar)");
     });
 }
 
-/// 스캐폴드 hello 유지 (scaffold 단계 바이너리에서 GPUI 없는 경로로 호출 가능)
+/// 스캐폴드 hello 유지 (non-GPUI 경로용).
 pub fn hello() {
     info!("moai-studio-ui: scaffold entry. GPUI 엔트리는 run_app()");
 }
