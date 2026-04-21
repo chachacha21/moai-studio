@@ -2,11 +2,11 @@
 
 ---
 spec_id: SPEC-V3-001
-checkpoint: Phase 1 (GPUI 스캐폴드 + Workspace 인터랙션)
+checkpoint: Phase 1 + RG-V3-4 CI 보강
 recorded: 2026-04-21
-branch: feat/v3-scaffold
+branch: feat/v3-scaffold (remote 미설정 — push 보류)
 base_commit: 101cd83 (Phase 0.2 기준점)
-head_commit: 9d586ea
+head_commit: 6ef90d8
 ---
 
 ## 1. RG 진행 요약
@@ -16,10 +16,10 @@ head_commit: 9d586ea
 | RG-V3-1 | Workspace 재구성 (Cargo) | ✅ 완료 | `crates/moai-core` 289 tests 유지, Swift archive 이동 완료 |
 | RG-V3-2 | GPUI 통합 + 기본 윈도우 | ✅ 완료 | Phase 1.1~1.8, 8 커밋, AC-2.1/2.2/2.3 충족 |
 | RG-V3-3 | libghostty-vt 스파이크 | ⛔ 블로킹 | Metal Toolchain 이슈, Zig 0.15.x 설치는 완료 |
-| RG-V3-4 | CI matrix + 품질 게이트 | ⬜ 미시작 | 로컬 3 게이트 (fmt/clippy/test) 는 수동으로 통과 중 |
+| RG-V3-4 | CI matrix + 품질 게이트 | ✅ workflow 완료 | `.github/workflows/ci-rust.yml` 구축 (Phase 0.5) + smoke `--scaffold` bug fix (Phase 1.9). AC-4.1 코드 레벨 충족. 실제 CI 그린 검증은 remote 설정 + push 이후 가능. AC-4.2 (branch protection) 는 GitHub repo 설정 대상 |
 | RG-V3-5 | Swift 자산 아카이브 | ✅ 완료 | `archive/swift-legacy/` 로 `git mv` 완료 (Phase 0.2) |
 
-**전체 완료율**: 3/5 RG (60%) · Acceptance Criteria 9개 중 5개 충족 (AC-1.1, AC-1.2, AC-2.1, AC-2.2, AC-2.3, AC-5.1)
+**전체 완료율**: 4/5 RG (80%) · Acceptance Criteria 9개 중 7개 코드 레벨 충족 (AC-1.1, AC-1.2, AC-2.1, AC-2.2, AC-2.3, AC-4.1, AC-5.1)
 
 ---
 
@@ -54,8 +54,8 @@ head_commit: 9d586ea
 | AC-2.3 네이티브 폴더 다이얼로그 | ✅ | Phase 1.4 `rfd::FileDialog`, Phase 1.7 실배선 |
 | AC-3.1 libghostty 스파이크 | ❌ | 블로킹 — Metal Toolchain |
 | AC-3.2 Zig 미설치 에러 | ❌ | libghostty 스파이크 대기 |
-| AC-4.1 CI 4 게이트 통과 | ⚠️ | 로컬만 통과, GitHub Actions workflow 미구축 |
-| AC-4.2 린트 오류 PR 머지 차단 | ⚠️ | CI 없음 |
+| AC-4.1 CI 4 게이트 통과 | ✅ (코드) / ⏳ (실증) | workflow 구축 완료 (`ci-rust.yml`), actionlint 0 issues. 실제 CI 그린 관찰은 remote 설정 + push 이후 |
+| AC-4.2 린트 오류 PR 머지 차단 | ⚠️ repo 설정 대기 | Workflow 는 status check 제공 (`rust`, `smoke` jobs). GitHub branch protection rule 활성화는 repo 관리자 작업 |
 | AC-5.1 `app/` archive 이동 | ✅ | Phase 0.2 완료 |
 
 ---
