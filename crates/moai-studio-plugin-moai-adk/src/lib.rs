@@ -14,5 +14,7 @@
 use tracing::info;
 
 pub fn hello() {
-    info!("moai-studio-plugin-moai-adk: scaffold (Phase 0.4). Bundle plugin → Phase 6 (SPEC-V3-013).");
+    info!(
+        "moai-studio-plugin-moai-adk: scaffold (Phase 0.4). Bundle plugin → Phase 6 (SPEC-V3-013)."
+    );
 }
