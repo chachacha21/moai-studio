@@ -226,7 +226,8 @@ app/Frameworks/*/
 !app/Frameworks/.gitkeep
 target/
 Cargo.lock
-.cargo/
+.cargo/*
+!.cargo/config.toml
 *.profraw
 *.profdata
 app/Config/Signing.local.xcconfig
