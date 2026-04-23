@@ -27,9 +27,12 @@ pub struct TerminalHandle {
     pub(crate) render: RenderState<'static>,
 }
 
-// 안전성: TerminalHandle 은 PTY worker thread 에서만 접근됨.
-// libghostty-vt 의 !Send 제약을 PTY worker 단일 소유로 충족.
-// worker.rs 에서 block_in_place 로 async boundary 격리.
+// @MX:WARN(unsafe-send-single-owner-invariant)
+// @MX:REASON: libghostty-vt 의 Terminal 은 !Send + !Sync 인데 tokio::spawn 으로 이동시키려면 Send 가 필요하다.
+//   안전성은 "TerminalHandle 은 PTY worker thread 단독 소유" 라는 invariant 에 의존한다.
+//   invariant 는 worker.rs 의 PtyWorker::run 이 block_in_place 로 async boundary 를 격리하고,
+//   TerminalHandle 참조를 외부로 노출하지 않는 것으로 보장된다.
+//   invariant 가 깨지면 data race 로 UB 발생 — 외부에서 핸들 복제/전송 금지.
 unsafe impl Send for TerminalHandle {}
 
 /// RenderState 스냅샷 — GPUI render thread 가 소비하는 Grid 정보.
@@ -47,6 +50,8 @@ pub struct RenderSnapshot {
 ///
 /// AC-T-8(b): 테스트에서 호출하는 진입점.
 pub fn new_terminal(cols: u16, rows: u16) -> Result<TerminalHandle, FfiError> {
+    // @MX:NOTE(max-scrollback-default): 1000 행은 Phase 2 기본값 — Ghostty/Zed 기본 (10,000) 보다 보수적.
+    //   Phase 2.5 scrollback UI 구현 시 config 값으로 이관 예정 (SPEC-V3-002 §6 Exclusions).
     let opts = TerminalOptions {
         cols,
         rows,
@@ -74,10 +79,13 @@ pub fn render_state(handle: &TerminalHandle) -> RenderSnapshot {
     let cursor_col = handle.inner.cursor_x().unwrap_or(0);
     let cursor_row = handle.inner.cursor_y().unwrap_or(0);
 
+    // @MX:TODO(render-state-row-iter): row0_text / row0_cell_count 는 현재 stub.
+    //   RenderState 의 row iterator API 로 Cell::text() 수집 필요. T3 후속 또는 SPEC-V3-003 에서 연동.
+    //   현재 상태에서는 테스트 (libghostty_api_compat) 가 커서 위치만 검증한다.
     RenderSnapshot {
         cursor_row,
         cursor_col,
-        row0_text: String::new(), // 실제 grid 읽기는 RenderState row iterator 로 구현 예정
+        row0_text: String::new(),
         row0_cell_count: 0,
     }
 }

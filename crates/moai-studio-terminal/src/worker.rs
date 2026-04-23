@@ -147,7 +147,10 @@ impl PtyWorker {
                 Ok(_) => {
                     // 빈 read — PTY 가 살아있는지 확인
                     if !pty.is_alive() {
-                        let exit_code = 0; // portable-pty 에서 exit code 추출 (추후 구현)
+                        // @MX:TODO(process-exit-code-extraction): portable-pty 의 Child::wait() 으로
+                        //   실제 exit status 추출 필요. 현재는 정상 종료 = 0 으로 고정하지만
+                        //   shell crash 구분이 불가능하다. Pty trait 에 exit_status() 추가 후 연동.
+                        let exit_code = 0;
                         let _ = tx.send(PtyEvent::ProcessExit(exit_code));
                         break;
                     }
