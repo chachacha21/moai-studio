@@ -161,18 +161,9 @@ jobs:
         with:
           key: v3-${{ matrix.platform.name }}
 
-      - name: Build scaffold binary
-        run: cargo build --release --bin moai-studio
-
-      - name: Run scaffold smoke
-        # --scaffold: GPUI 윈도우 생성을 건너뛰고 스캐폴드 로그만 출력 (headless CI runner 대응).
-        run: |
-          ./target/release/moai-studio --scaffold 2>&1 | tee smoke.log
-          grep -q "Scaffold OK" smoke.log || { echo "smoke: missing 'Scaffold OK'"; exit 1; }
-          grep -q "moai-adk plugin: bundled" smoke.log || { echo "smoke: missing 'moai-adk plugin: bundled'"; exit 1; }
-
-      # SPEC-V3-002 AC-T-7: ghostty-spike --headless 스모크 (Zig + libghostty-vt 통합)
-      - name: Install Zig 0.15.2 (for terminal spike)
+      # SPEC-V3-002 AC-T-7: Zig 0.15.2 필수 (moai-studio-terminal 링크 시 build.rs 가 선제 검증).
+      # Build scaffold binary 이전에 설치해야 함 — terminal crate 가 moai-studio bin 에 링크된다.
+      - name: Install Zig 0.15.2
         uses: mlugg/setup-zig@v2.2.1
         with:
           version: 0.15.2
@@ -184,6 +175,16 @@ jobs:
             ~/.cache/zig
             ~/Library/Caches/zig
           key: zig-0.15.2-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build scaffold binary
+        run: cargo build --release --bin moai-studio
+
+      - name: Run scaffold smoke
+        # --scaffold: GPUI 윈도우 생성을 건너뛰고 스캐폴드 로그만 출력 (headless CI runner 대응).
+        run: |
+          ./target/release/moai-studio --scaffold 2>&1 | tee smoke.log
+          grep -q "Scaffold OK" smoke.log || { echo "smoke: missing 'Scaffold OK'"; exit 1; }
+          grep -q "moai-adk plugin: bundled" smoke.log || { echo "smoke: missing 'moai-adk plugin: bundled'"; exit 1; }
 
       - name: Run terminal spike (headless)
         # AC-T-7: PR 시 cargo run --example ghostty-spike -- --headless 스모크.

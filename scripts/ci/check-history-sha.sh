@@ -25,12 +25,21 @@ fi
 # ------------------------------------------------------------------
 # origin/main 브랜치 Cargo.toml 에서 이전 SHA 추출
 # ------------------------------------------------------------------
-OLD_SHA=$(git show origin/main:"$CARGO_TOML" 2>/dev/null | grep 'rev = ' | sed 's/.*rev = "\([^"]*\)".*/\1/' || true)
+OLD_SHA=$(git show "origin/${BASE_REF:-main}:$CARGO_TOML" 2>/dev/null | grep 'rev = ' | sed 's/.*rev = "\([^"]*\)".*/\1/' || true)
 
+# 최초 도입 케이스 (base 브랜치에 rev = 라인이 없음):
+#   - SPEC-V3-002 최초 PR: Cargo.toml 에 placeholder 만 있었고 rev 없음
+#   - 이 경우 이전 SHA 비교 대상이 없으므로 신규 SHA 가 HISTORY 에 포함되어 있는지만 검증
 if [ -z "$OLD_SHA" ]; then
-  echo "ERROR: origin/main:$CARGO_TOML 에서 rev = 라인을 파싱할 수 없습니다." >&2
-  echo "       (origin/main 에 $CARGO_TOML 이 없거나 rev = 라인이 없는 경우)" >&2
-  exit 1
+  echo "INFO: origin/${BASE_REF:-main}:$CARGO_TOML 에 rev = 라인 없음 — 최초 도입 PR 로 판단."
+  echo "NEW SHA: $NEW_SHA"
+  if ! grep -q "$NEW_SHA" "$SPEC_MD"; then
+    echo "ERROR: $SPEC_MD HISTORY 에 신규 SHA 가 없습니다: $NEW_SHA" >&2
+    echo "       최초 도입 PR 이라도 spec.md HISTORY 에 신규 SHA 기록 필수." >&2
+    exit 1
+  fi
+  echo "OK: 최초 도입 PR — HISTORY 에 신규 SHA ($NEW_SHA) 기록 확인."
+  exit 0
 fi
 
 echo "OLD SHA: $OLD_SHA"
