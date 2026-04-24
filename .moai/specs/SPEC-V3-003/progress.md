@@ -133,7 +133,88 @@
   - **AC-P-2 (단위 부분)** ✅ close_promotes_sibling (integration FD count 는 T4 범위)
 - blockers: 없음
 
-### Next (후속 session resume): T2 PaneConstraints → T3 traits → T4 PaneSplitter 구체 구현 (Spike 1 blocker)
-- T4 의존성: S1 (GPUI divider drag API 검증) 먼저 수행 필요
-- session 이어받을 때: `/moai run SPEC-V3-003` 호출 → progress.md 읽고 T2 부터 resume
+### Phase 2 T2 (PaneConstraints RED-GREEN-REFACTOR): complete
+- Agent: manager-tdd (subagent_type, isolation=worktree, foreground, 별도 agent spawn)
+- Agent ID: ad7ad54130a4ca255
+- Scope: T2 only (T3 범위 미침범)
+- files modified:
+  - crates/moai-studio-ui/src/panes/constraints.rs (stub → 실제 구현, 76 LOC including tests + doc tests)
+  - crates/moai-studio-ui/src/panes/mod.rs (+2 lines: `pub mod constraints;` + `pub use constraints::PaneConstraints;`)
+- 구현 결정:
+  - **unit struct** `pub struct PaneConstraints;` — 의도적 non-instantiable 마커 (인스턴스 활용 없음)
+  - **`impl` associated const**: `MIN_COLS: u16 = 40`, `MIN_ROWS: u16 = 10` (spec.md M-2 해소)
+  - **가변 API 금지**: new / with_* / set_* / Builder 패턴 불허 (AC-P-21)
+  - **AC-P-21 컴파일타임 강제**: doc test `compile_fail` 3건 (new, set_min_cols, type mismatch) — trybuild 의존 없이 doc test 로 완전 대체, Cargo.toml 무변경
+- test results:
+  - `cargo test -p moai-studio-ui --lib panes::constraints`: **3/3 PASS**
+  - `cargo test --doc -p moai-studio-ui`: **3 compile_fail doc tests PASS** (AC-P-21 negative enforcement)
+  - `cargo test -p moai-studio-ui --lib` 전체: **76/76 PASS** (T1 13 + T2 3 + 기존 60)
+  - `cargo test -p moai-studio-terminal`: **14/14 PASS** (AC-P-16 regression gate, 1 ignored 는 기존 상태 유지)
+  - `cargo clippy -p moai-studio-ui -- -D warnings`: **0 warnings**
+  - Coverage: constraints.rs **~100%** (12 LOC 실 구현 완전 커버)
+- MX tags added:
+  - `panes/constraints.rs:38` ANCHOR `pane-constraints-immutable` + REASON (fan_in >= 3: T4/T5/T7)
+- TRUST 5 self-check: T/R/U/S/T 전원 PASS
+- implementation_divergence:
+  - planned vs actual files: 완전 일치 (0% drift)
+  - additional_features: 없음 (YAGNI 준수)
+  - new_dependencies: 없음
+- AC 통과 (T2 범위):
+  - **AC-P-21** ✅ PaneConstraints public API negative surface 컴파일타임 강제 완료
+  - **AC-P-4** 준비 완료 (T4/T5 에서 MIN_COLS/MIN_ROWS 활용 예정)
+- blockers: 없음
+
+### Session Summary (2026-04-24 /moai run SPEC-V3-003 ultrathink)
+
+완료된 Phase:
+- Phase 0.5 (skip — memory_guard disabled)
+- Phase 0.9 Language detection (Rust 1.93 workspace)
+- Phase 0.95 Scale-Based Mode (Full Pipeline)
+- Phase 1 manager-strategy 분석 (strategy.md 9 sections, 29 AC 커버리지 검증)
+- Decision Point 1 HUMAN GATE → **APPROVED**
+- Phase 1.5 tasks.md (14 tasks × 3 milestones)
+- Phase 1.6 29 AC TaskCreate (Batch 1+2+3, TaskList 후속 리셋되었으나 tasks.md 에 persistent)
+- Phase 1.7 9 stub files
+- Phase 1.8 MX context scan (terminal/mod.rs 의 ANCHOR/NOTE/TODO 파악)
+- Phase 2.0 Sprint Contract (contract.md MS-1)
+- Spike 3 결정 완료 (PaneId/TabId pattern = `format!("pane-{:x}", nanos)`)
+- **Phase 2 T1 PaneTree** (commit b65e34a, 13 tests, 90% coverage)
+- **Phase 2 T2 PaneConstraints** (commit fa68cb1, 3+3 tests, ~100% coverage)
+
+Commits added:
+- `579c9e2` docs(spec): SPEC-V3-003 Run Phase 1 산출물 + MS-1 stub scaffolding
+- `b65e34a` feat(panes): T1 PaneTree — 이진 트리 split/close 자료구조 v1.0.0 (AC-P-1, AC-P-3, AC-P-20)
+- `fa68cb1` feat(panes): T2 PaneConstraints — 최소 pane 크기 불변 상수 (AC-P-21)
+
+Branch: feat/v3-scaffold (7 commits ahead of origin — 기존 4 + 본 session 3)
+Working tree: clean (T2 commit 후)
+
+AC 통과 누계 (MS-1 14 AC 중):
+- AC-P-1 ✅ (T1, split_horizontal/vertical_from_leaf)
+- AC-P-2 ⏳ 부분 (T1 unit; T4 integration 대기)
+- AC-P-3 ✅ (T1, close_last_leaf_is_noop)
+- AC-P-20 ✅ (T1, ratio_boundary_rejected)
+- AC-P-21 ✅ (T2, PaneConstraints negative API surface)
+- 잔여 9건: AC-P-4/5/6/7/9a(MS-1 부분)/9b(MS-1 부분)/16/17/18/22/23 → T3~T7 에서 처리
+
+### Next Session Resume Instructions
+
+다음 session 에서 `/moai run SPEC-V3-003` 재호출:
+1. progress.md 읽고 "Session Summary" + "Next Session Resume Instructions" 섹션 확인
+2. T3 (PaneSplitter + ResizableDivider traits + Mock impls) 부터 시작
+3. T3 완료 후 **Spike 1** 실행 필요 (GPUI 0.2.2 divider drag API 검증) — T4/T5 blocker
+4. Spike 1 결과에 따라:
+   - PASS: T4 `GpuiNativeSplitter` 구현
+   - FAIL: [USER-DECISION-REQUIRED: gpui-component-adoption] AskUserQuestion → S2 Spike 실행 여부 결정
+5. T5 → T6 → T7 순차. T6 에서 [USER-DECISION-REQUIRED: spike-4-linux-shell-path] 조사 선행 가능 (MS-2 T9 Linux 결정에 영향)
+6. MS-1 완료 시 contract.md §7 Sprint Exit Criteria 모두 체크
+7. MS-2 진입 전 contract.md 에 MS-2 sprint revision 추가
+
+사전 준비물 (다음 session resume 시 orchestrator 가 reload):
+- 본 progress.md (checkpoint)
+- tasks.md T3~T14 표
+- strategy.md §5.1 T3 상세
+- contract.md §4 test 시나리오 (T3 = `abstract_traits_compile_without_impl`)
+- spec.md §5 RG-P-7 REQ-P-061/062 (trait 정의 요구사항)
+- acceptance.md AC-P-17 (T3 AC)
 
