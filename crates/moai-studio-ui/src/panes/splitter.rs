@@ -118,6 +118,7 @@ pub struct MockPaneSplitter {
 #[cfg(test)]
 impl MockPaneSplitter {
     /// 단일 leaf (`"mock-pane-0"`) 로 시작하는 MockPaneSplitter 를 생성한다.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let root_id = PaneId::new_from_literal("mock-pane-0");
         let tree = crate::panes::PaneTree::new_leaf(root_id.clone(), "mock-pane-0".to_string());

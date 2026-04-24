@@ -1,24 +1,30 @@
-//! `ResizableDivider` 추상 trait — drag clamp 계약 (SPEC-V3-003 T3).
+//! `ResizableDivider` 추상 trait + `GpuiDivider` 구체 구현 (SPEC-V3-003 T3/T5).
 //!
 //! ## 모듈 역할
 //!
-//! divider drag 이벤트를 ratio 변경으로 변환하는 **인터페이스 계약**을 정의한다.
+//! divider drag 이벤트를 ratio 변경으로 변환하는 **인터페이스 계약** 과
+//! `PaneConstraints` 기반 clamp 를 수행하는 **프로덕션 구체 구현** 을 제공한다.
 //!
 //! ## Clamp 정책
 //!
 //! `on_drag` 의 반환값은 항상 `[min_ratio, 1.0 - min_ratio]` 구간으로 clamp 된다.
 //! `min_ratio` 는 `PaneConstraints::{MIN_COLS, MIN_ROWS}` 에서 유도된다.
 //!
-//! T5 구체 구현에서 orientation (Horizontal/Vertical) 에 따라:
-//! - Horizontal → MIN_COLS × px_per_col 기준
-//! - Vertical   → MIN_ROWS × px_per_row 기준
+//! orientation 별 분기:
+//! - `Horizontal` → `MIN_COLS × px_per_col` 기준
+//! - `Vertical`   → `MIN_ROWS × px_per_row` 기준
 //!
 //! ## AC-P-17 연계
 //!
 //! `MockDivider` + `ResizableDivider` 결합이 구체 GPUI 구현 없이 컴파일됨을
 //! `tests::abstract_traits_compile_without_impl` 단위 테스트가 검증한다.
 //!
-//! @MX:TODO(T5): Spike 1 결과 기반 구체 구현. Clamp 로직은 PaneConstraints::{MIN_COLS, MIN_ROWS} 준수.
+//! ## GPUI 배선 (T7 범위)
+//!
+//! `GpuiDivider` 는 순수 Rust 계산만 포함한다.
+//! GPUI `on_mouse_move` → `GpuiDivider::on_drag` 연결은 T7 RootView wire-up 에서 수행한다.
+
+use crate::panes::{PaneConstraints, SplitDirection};
 
 // ============================================================
 // ResizableDivider trait
@@ -72,13 +78,111 @@ pub trait ResizableDivider {
 }
 
 // ============================================================
+// GpuiDivider — 프로덕션 구체 구현체 (T5)
+// ============================================================
+
+// @MX:ANCHOR: [AUTO] concrete-divider-gpui
+// @MX:REASON: [AUTO] GpuiDivider 는 ResizableDivider 의 프로덕션 구체 구현체.
+//   fan_in >= 2 예상: T7 RootView drag callback, T11 future bench.
+//   순수 Rust 계산만 포함 — GPUI on_mouse_move 배선은 T7 범위.
+
+/// GPUI native 이벤트 기반 `ResizableDivider` 구체 구현체.
+///
+/// ## 역할
+///
+/// drag delta 를 orientation 에 맞는 min_px 제약으로 clamp 하여 새 ratio 를 반환한다.
+///
+/// ## GPUI 배선 (T7 범위)
+///
+/// 이 구조체는 순수 Rust 계산만 제공한다. GPUI `on_mouse_move` → `GpuiDivider::on_drag`
+/// 연결은 T7 RootView wire-up 에서 수행한다.
+///
+/// ## orientation 별 min_px 계산
+///
+/// - `Horizontal` → `PaneConstraints::MIN_COLS × px_per_col`
+/// - `Vertical`   → `PaneConstraints::MIN_ROWS × px_per_row`
+pub struct GpuiDivider {
+    /// 분할 방향: Horizontal = 좌/우 (수직 divider), Vertical = 상/하 (수평 divider).
+    orientation: SplitDirection,
+    /// 현재 ratio (0.0 < ratio < 1.0).
+    current_ratio: f32,
+    /// 열(col) 당 픽셀 크기 — Horizontal split 에서 MIN_COLS 환산에 사용.
+    px_per_col: f32,
+    /// 행(row) 당 픽셀 크기 — Vertical split 에서 MIN_ROWS 환산에 사용.
+    px_per_row: f32,
+}
+
+impl GpuiDivider {
+    /// 새 GpuiDivider 를 생성한다.
+    ///
+    /// # Arguments
+    ///
+    /// - `orientation`: 분할 방향 (`SplitDirection::Horizontal` 또는 `Vertical`).
+    /// - `initial_ratio`: 초기 ratio (`0.0 < ratio < 1.0`).
+    /// - `px_per_col`: 열 당 픽셀 크기 (Horizontal split 최소 크기 계산).
+    /// - `px_per_row`: 행 당 픽셀 크기 (Vertical split 최소 크기 계산).
+    pub fn new(
+        orientation: SplitDirection,
+        initial_ratio: f32,
+        px_per_col: f32,
+        px_per_row: f32,
+    ) -> Self {
+        Self {
+            orientation,
+            current_ratio: initial_ratio,
+            px_per_col,
+            px_per_row,
+        }
+    }
+
+    /// orientation 에 따른 최소 sibling 픽셀 크기를 반환한다.
+    ///
+    /// - `Horizontal` → `PaneConstraints::MIN_COLS × px_per_col`
+    /// - `Vertical`   → `PaneConstraints::MIN_ROWS × px_per_row`
+    fn min_px_for_orientation(&self) -> f32 {
+        match self.orientation {
+            SplitDirection::Horizontal => PaneConstraints::MIN_COLS as f32 * self.px_per_col,
+            SplitDirection::Vertical => PaneConstraints::MIN_ROWS as f32 * self.px_per_row,
+        }
+    }
+}
+
+impl ResizableDivider for GpuiDivider {
+    /// drag delta 를 반영한 새 ratio 를 반환한다.
+    ///
+    /// # @MX:NOTE: [AUTO] ratio-clamp-enforces-min-size
+    /// REQ-P-012 / AC-P-6: ratio 는 항상 `[min_ratio, 1.0 - min_ratio]` 로 clamp 된다.
+    /// min_ratio = min_px_for_orientation() / total_px.
+    /// 양 sibling 모두 최소 `PaneConstraints::MIN_COLS` (Horizontal) 또는
+    /// `PaneConstraints::MIN_ROWS` (Vertical) 크기를 보장한다.
+    fn on_drag(&mut self, delta_px: f32, total_px: f32) -> f32 {
+        // @MX:NOTE: [AUTO] ratio-clamp-enforces-min-size
+        // REQ-P-012 / AC-P-6: raw ratio 에 clamp 적용.
+        let min_ratio = self.min_ratio_for(total_px);
+        let max_ratio = 1.0 - min_ratio;
+
+        // raw ratio = (현재 ratio × total_px + delta_px) / total_px
+        let raw = (self.current_ratio * total_px + delta_px) / total_px;
+
+        // clamp 적용
+        let clamped = raw.clamp(min_ratio, max_ratio);
+        self.current_ratio = clamped;
+        clamped
+    }
+
+    /// `total_px` 에 대한 최소 ratio 를 반환한다.
+    ///
+    /// `min_ratio = min_px_for_orientation() / total_px`
+    fn min_ratio_for(&self, total_px: f32) -> f32 {
+        self.min_px_for_orientation() / total_px
+    }
+}
+
+// ============================================================
 // MockDivider — #[cfg(test)] 전용
 // ============================================================
 
 // @MX:NOTE: [AUTO] test-only-impl — drag clamp 수식의 단위 검증 + T5 refine 용 baseline
-
-#[cfg(test)]
-use crate::panes::{PaneConstraints, SplitDirection};
 
 /// 테스트 전용 `ResizableDivider` 구현체.
 ///
@@ -167,6 +271,118 @@ mod tests {
         fn accept(_: &dyn ResizableDivider) {}
         let d = MockDivider::new(SplitDirection::Horizontal, 0.5, 120.0);
         accept(&d);
+    }
+
+    // -------------------------------------------------------
+    // GpuiDivider T5 테스트 (AC-P-6, AC-P-4)
+    // -------------------------------------------------------
+
+    /// AC-P-6: on_drag 은 ratio 를 항상 [min_ratio, 1.0 - min_ratio] 범위로 clamp 한다.
+    ///
+    /// 설정: Horizontal, px_per_col=10.0, px_per_row=10.0, total=800px
+    /// min_px = MIN_COLS(40) × 10.0 = 400px
+    /// min_ratio = 400 / 800 = 0.5
+    /// → valid range = [0.5, 0.5] (극단 케이스이지만 boundary 테스트용)
+    ///
+    /// 실제 테스트: total=1200px, px_per_col=5.0
+    /// min_px = 40 × 5.0 = 200px
+    /// min_ratio = 200 / 1200 ≈ 0.1667
+    /// initial_ratio=0.5, delta=+700px → raw=(0.5*1200+700)/1200=1300/1200=1.0833 → clamped=0.8333
+    #[test]
+    fn drag_clamps_ratio() {
+        // Horizontal, px_per_col=5.0, px_per_row=10.0
+        // MIN_COLS=40 → min_px = 200.0
+        // total=1200px → min_ratio = 200/1200 ≈ 0.1667
+        let mut d = GpuiDivider::new(SplitDirection::Horizontal, 0.5, 5.0, 10.0);
+
+        // (1) 극단 양수 delta — max clamp
+        let max_clamped = d.on_drag(700.0, 1200.0);
+        let expected_min = 200.0_f32 / 1200.0; // ≈ 0.1667
+        let expected_max = 1.0 - expected_min; // ≈ 0.8333
+        assert!(
+            (max_clamped - expected_max).abs() < 1e-4,
+            "극단 양수 delta → max clamp 예상 {expected_max:.4}, 실제 {max_clamped:.4}"
+        );
+
+        // (2) 극단 음수 delta — min clamp
+        let mut d2 = GpuiDivider::new(SplitDirection::Horizontal, 0.5, 5.0, 10.0);
+        let min_clamped = d2.on_drag(-700.0, 1200.0);
+        assert!(
+            (min_clamped - expected_min).abs() < 1e-4,
+            "극단 음수 delta → min clamp 예상 {expected_min:.4}, 실제 {min_clamped:.4}"
+        );
+
+        // (3) 범위 내 정상 delta
+        let mut d3 = GpuiDivider::new(SplitDirection::Horizontal, 0.5, 5.0, 10.0);
+        let normal = d3.on_drag(120.0, 1200.0);
+        // raw = (0.5 * 1200 + 120) / 1200 = 720/1200 = 0.6
+        assert!(
+            (normal - 0.6).abs() < 1e-4,
+            "정상 delta → 0.6 예상, 실제 {normal}"
+        );
+        // clamp 범위 내임을 확인
+        assert!(
+            normal >= expected_min && normal <= expected_max,
+            "결과 ratio 가 [min_ratio, max_ratio] 내에 있어야 함"
+        );
+    }
+
+    /// AC-P-4 부분: Horizontal orientation → min_px 는 MIN_COLS × px_per_col 로 계산된다.
+    ///
+    /// GpuiDivider::min_ratio_for(total_px) = (MIN_COLS × px_per_col) / total_px
+    #[test]
+    fn horizontal_uses_min_cols() {
+        // px_per_col=3.0 → min_px = 40 × 3.0 = 120.0
+        let d = GpuiDivider::new(SplitDirection::Horizontal, 0.5, 3.0, 10.0);
+        let min_ratio = d.min_ratio_for(400.0);
+        // 120.0 / 400.0 = 0.3
+        assert!(
+            (min_ratio - 0.3).abs() < 1e-5,
+            "Horizontal min_ratio 예상 0.3, 실제 {min_ratio}"
+        );
+    }
+
+    /// AC-P-4 부분: Vertical orientation → min_px 는 MIN_ROWS × px_per_row 로 계산된다.
+    ///
+    /// GpuiDivider::min_ratio_for(total_px) = (MIN_ROWS × px_per_row) / total_px
+    #[test]
+    fn vertical_uses_min_rows() {
+        // px_per_row=5.0 → min_px = 10 × 5.0 = 50.0
+        let d = GpuiDivider::new(SplitDirection::Vertical, 0.5, 10.0, 5.0);
+        let min_ratio = d.min_ratio_for(400.0);
+        // 50.0 / 400.0 = 0.125
+        assert!(
+            (min_ratio - 0.125).abs() < 1e-5,
+            "Vertical min_ratio 예상 0.125, 실제 {min_ratio}"
+        );
+    }
+
+    /// delta 가 ratio 를 min 이하로 낮추면 min_ratio 로 clamp 된다.
+    #[test]
+    fn delta_below_min_clamps_to_min_ratio() {
+        // Horizontal, px_per_col=6.0 → min_px=240, total=800 → min_ratio=0.3
+        let mut d = GpuiDivider::new(SplitDirection::Horizontal, 0.5, 6.0, 10.0);
+        // delta=-300 → raw=(0.5*800-300)/800=100/800=0.125 < 0.3 → clamp to 0.3
+        let result = d.on_drag(-300.0, 800.0);
+        let min_ratio = 240.0_f32 / 800.0; // 0.3
+        assert!(
+            (result - min_ratio).abs() < 1e-5,
+            "min clamp 예상 {min_ratio}, 실제 {result}"
+        );
+    }
+
+    /// delta 가 ratio 를 1.0-min 이상으로 올리면 1.0-min_ratio 로 clamp 된다.
+    #[test]
+    fn delta_above_max_clamps_to_max_ratio() {
+        // Horizontal, px_per_col=6.0 → min_px=240, total=800 → min_ratio=0.3, max_ratio=0.7
+        let mut d = GpuiDivider::new(SplitDirection::Horizontal, 0.5, 6.0, 10.0);
+        // delta=+300 → raw=(0.5*800+300)/800=700/800=0.875 > 0.7 → clamp to 0.7
+        let result = d.on_drag(300.0, 800.0);
+        let max_ratio = 1.0 - 240.0_f32 / 800.0; // 0.7
+        assert!(
+            (result - max_ratio).abs() < 1e-5,
+            "max clamp 예상 {max_ratio}, 실제 {result}"
+        );
     }
 
     // -------------------------------------------------------
