@@ -197,24 +197,63 @@ AC 통과 누계 (MS-1 14 AC 중):
 - AC-P-21 ✅ (T2, PaneConstraints negative API surface)
 - 잔여 9건: AC-P-4/5/6/7/9a(MS-1 부분)/9b(MS-1 부분)/16/17/18/22/23 → T3~T7 에서 처리
 
+### Phase 2 T3 (PaneSplitter + ResizableDivider RED-GREEN-REFACTOR): complete
+- Agent: manager-tdd (TDD implementer, T3 only, no sub-agent spawn)
+- Scope: T3 only (T4/T5 범위 미침범, T1/T2 무수정)
+- files modified:
+  - crates/moai-studio-ui/src/panes/splitter.rs (stub → PaneSplitter trait + CloseError + MockPaneSplitter + 8 unit tests)
+  - crates/moai-studio-ui/src/panes/divider.rs (stub → ResizableDivider trait + MockDivider + 4 unit tests)
+  - crates/moai-studio-ui/src/panes/mod.rs (append-only: `pub mod splitter;` + re-exports + `pub mod divider;` + re-exports + @MX:TODO 제거, 기존 라인 무수정)
+- 구현 결정:
+  - **CloseError** enum: variant `TargetNotFound` 1개. `From<SplitError>` 구현 (defensive, MinSizeViolated → TargetNotFound 매핑).
+  - **AC-P-17 검증 방식**: d 경로 채택 — `tests::abstract_traits_compile_without_impl` unit test (trait object + Mock 결합). doc test 는 `#[cfg(test)]` 외부 접근 불가 + Cargo.toml 변경 금지 제약으로 기각. `no_run` fence doc test 는 실행 검증 불가로 기각.
+  - **MockPaneSplitter payload factory**: `format!("mock-pane-{n}")` + `next_counter: u32` 증가. PaneId 는 `new_from_literal` 로 생성 (T1 패턴 재사용).
+  - **MockDivider**: `sibling_min_px` 외부 주입. `clamp_ratio` 내부 헬퍼. `min_px_for_orientation` `#[allow(dead_code)]` — T5 참조 경로 문서화용.
+  - **import 배치**: `use crate::panes::{PaneConstraints, SplitDirection}` 를 `#[cfg(test)]` 위에 배치 → clippy `-D unused-imports` 회피.
+- test results:
+  - `cargo test -p moai-studio-ui --lib splitter`: **8/8 PASS**
+  - `cargo test -p moai-studio-ui --lib divider`: **4/4 PASS**
+  - `cargo test -p moai-studio-ui --lib` 전체: **88/88 PASS** (T1 13 + T2 3 + T3 12 + 기존 60)
+  - `cargo test --doc -p moai-studio-ui`: **3/3 PASS** (T2 compile_fail doc tests 유지, T3 doc test 없음)
+  - `cargo test -p moai-studio-terminal`: **4/4 PASS** (integration binary 포함 총 4, AC-P-16 regression gate GREEN)
+  - `cargo clippy -p moai-studio-ui -- -D warnings`: **0 warnings**
+  - `cargo fmt --package moai-studio-ui`: clean
+- MX tags added:
+  - `splitter.rs` before `pub trait PaneSplitter`: ANCHOR `pane-splitter-contract` + REASON
+  - `divider.rs` before `pub trait ResizableDivider`: ANCHOR `divider-contract` + REASON
+  - `splitter.rs` before `MockPaneSplitter`: NOTE `test-only-impl`
+  - `divider.rs` before `#[cfg(test)] use`: NOTE `test-only-impl`
+- TRUST 5 self-check: T/R/U/S/T 전원 PASS
+- implementation_divergence:
+  - planned vs actual files: 완전 일치 (0% drift)
+  - additional_features: `CloseError::From<SplitError>` defensive impl, `MockDivider::min_px_for_orientation` doc 메서드
+  - scope_changes: DividerOrientation 신규 도입 없음 (task 명시 대로 SplitDirection 재사용)
+  - new_dependencies: 없음
+  - new_directories: 없음
+- AC 통과 (T3 범위):
+  - **AC-P-17** ✅ abstract_traits_compile_without_impl unit test 통과 — PaneSplitter + ResizableDivider + Mock 조합이 GPUI 의존 없이 컴파일·실행됨
+- blockers: 없음 (T4 blocker: Spike 1 GPUI 0.2.2 divider drag API 검증 — T3 블록 아님, T4 선행)
+
 ### Next Session Resume Instructions
 
 다음 session 에서 `/moai run SPEC-V3-003` 재호출:
-1. progress.md 읽고 "Session Summary" + "Next Session Resume Instructions" 섹션 확인
-2. T3 (PaneSplitter + ResizableDivider traits + Mock impls) 부터 시작
-3. T3 완료 후 **Spike 1** 실행 필요 (GPUI 0.2.2 divider drag API 검증) — T4/T5 blocker
-4. Spike 1 결과에 따라:
-   - PASS: T4 `GpuiNativeSplitter` 구현
+1. progress.md 읽고 "Phase 2 T3 complete" + "Next Session Resume Instructions" 섹션 확인
+2. **Spike 1** 먼저 실행 (GPUI 0.2.2 divider drag API 검증) — T4/T5 blocker. Context7 `gpui` 라이브러리 조회 후 native drag API 존재 여부 확인.
+3. Spike 1 결과에 따라:
+   - PASS: T4 `GpuiNativeSplitter` 구현 (`splitter_gpui_native.rs` 신규, Cargo.toml 무변경)
    - FAIL: [USER-DECISION-REQUIRED: gpui-component-adoption] AskUserQuestion → S2 Spike 실행 여부 결정
-5. T5 → T6 → T7 순차. T6 에서 [USER-DECISION-REQUIRED: spike-4-linux-shell-path] 조사 선행 가능 (MS-2 T9 Linux 결정에 영향)
-6. MS-1 완료 시 contract.md §7 Sprint Exit Criteria 모두 체크
-7. MS-2 진입 전 contract.md 에 MS-2 sprint revision 추가
+4. T5 → T6 → T7 순차. T6 에서 [USER-DECISION-REQUIRED: spike-4-linux-shell-path] 조사 선행 가능 (MS-2 T9 Linux 결정에 영향)
+5. MS-1 완료 시 contract.md §7 Sprint Exit Criteria 모두 체크
+6. MS-2 진입 전 contract.md 에 MS-2 sprint revision 추가
 
 사전 준비물 (다음 session resume 시 orchestrator 가 reload):
-- 본 progress.md (checkpoint)
-- tasks.md T3~T14 표
-- strategy.md §5.1 T3 상세
-- contract.md §4 test 시나리오 (T3 = `abstract_traits_compile_without_impl`)
-- spec.md §5 RG-P-7 REQ-P-061/062 (trait 정의 요구사항)
-- acceptance.md AC-P-17 (T3 AC)
+- 본 progress.md (checkpoint, T3 완료 상태)
+- tasks.md T4~T14 표
+- strategy.md §5.1 T4/T5 상세
+- contract.md §4.2 integration test 시나리오
+- spec.md §7.2/§7.3 (trait 정의), §11.1 C-1 (spike 전략)
+- T3 산출물:
+  - `splitter.rs`: `PaneSplitter` trait + `CloseError` + `MockPaneSplitter`
+  - `divider.rs`: `ResizableDivider` trait + `MockDivider`
+  - `mod.rs` re-exports: `CloseError, PaneSplitter, ResizableDivider`
 
