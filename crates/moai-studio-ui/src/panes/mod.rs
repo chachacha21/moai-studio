@@ -20,3 +20,8 @@ pub use divider::{GpuiDivider, ResizableDivider};
 
 pub mod splitter_gpui_native;
 pub use splitter_gpui_native::GpuiNativeSplitter;
+
+pub mod focus;
+pub use focus::{
+    FocusCommand, FocusRouter, KeyCode, KeyModifiers, PLATFORM_MOD, PlatformMod, dispatch_key,
+};
