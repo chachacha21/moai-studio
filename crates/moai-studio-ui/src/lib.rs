@@ -13,6 +13,7 @@
 //! - Empty state CTA 는 workspaces 가 비었을 때만 body 에 표시
 //! - TerminalSurface 가 Some 이면 content_area 는 빈 상태 대신 터미널을 렌더한다.
 
+pub mod panes;
 pub mod terminal;
 
 use gpui::{
