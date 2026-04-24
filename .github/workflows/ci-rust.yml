@@ -1,35 +1,265 @@
-name: Rust CI
+name: Rust CI (v3)
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**']
     paths:
-      - 'core/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
       - '.github/workflows/ci-rust.yml'
   pull_request:
     paths:
-      - 'core/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/ci-rust.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-rust-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: short
 
 jobs:
+  # ============================================================
+  # 3 플랫폼 매트릭스 빌드 (SPEC-V3-001 RG-V3-4)
+  # ============================================================
   rust:
-    runs-on: macos-14
+    name: ${{ matrix.platform.name }} (Rust ${{ matrix.rust }})
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [stable]
+        platform:
+          - { name: macOS,   runner: macos-14 }
+          - { name: Linux,   runner: ubuntu-latest }
+          # Windows 는 GPUI GA 이후 활성화 (SPEC-V3-001 Exclusions)
+          # - { name: Windows, runner: windows-2022 }
+
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+
+      # SPEC-V3-002 AC-T-7: Linux runner 디스크 청소 (~14GB 확보).
+      # Zig 0.15.2 toolchain + libghostty-vt 빌드 산출물 + gpui + criterion + trybuild 가
+      # 누적되어 기본 14GB 공간으로 부족 (ld linking 시 "No space left on device").
+      # 불필요한 Android SDK / Haskell / dotnet / CodeQL 삭제.
+      - name: Free disk space (Linux)
+        if: matrix.platform.runner == 'ubuntu-latest'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
+                      "$AGENT_TOOLSDIRECTORY/Ruby" "$AGENT_TOOLSDIRECTORY/Python" \
+                      /usr/local/.ghcup || true
+          sudo apt-get clean
+          df -h /
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ matrix.rust }}
           components: clippy, rustfmt
+
+      # GPUI 는 Linux 에서 xcb / xkbcommon / wayland / fontconfig / openssl dev 헤더 필요.
+      # macOS 는 Metal 프레임워크 내장이라 추가 설치 불필요.
+      - name: Install Linux system deps (GPUI runtime)
+        if: matrix.platform.runner == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libwayland-dev libfontconfig1-dev \
+            libssl-dev pkg-config
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: v3-${{ matrix.platform.name }}
+
+      # SPEC-V3-002 RG-V3-002-1 / AC-T-1 / AC-T-7: Zig 0.15.x 필수 (libghostty-vt 빌드)
+      - name: Install Zig 0.15.2
+        uses: mlugg/setup-zig@v2.2.1
+        with:
+          version: 0.15.2
+
+      - name: Cache Zig toolchain
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/Library/Caches/zig
+          key: zig-0.15.2-${{ runner.os }}-${{ runner.arch }}
+
+      # ============================================================
+      # 4 품질 게이트 (SPEC-V3-001 RG-V3-4 AC-4.1)
+      # ============================================================
+      - name: Gate 1 — cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Gate 2 — cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Gate 3 — cargo test
+        run: cargo test --workspace --all-targets
+
+      - name: Gate 4 — cargo build (release)
+        run: cargo build --release --bin moai-studio
+
+      # ============================================================
+      # 플러그인 토글 검증 (no-default-features = moai-adk off)
+      # ============================================================
+      - name: Plugin toggle — moai-adk off
+        run: cargo build --no-default-features --bin moai-studio
+
+  # ============================================================
+  # 스모크 실행 (바이너리 실제 런타임 검증)
+  # ============================================================
+  smoke:
+    name: Smoke (${{ matrix.platform.name }})
+    runs-on: ${{ matrix.platform.runner }}
+    needs: rust
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { name: macOS, runner: macos-14 }
+          - { name: Linux, runner: ubuntu-latest }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # SPEC-V3-002 AC-T-7: Linux runner 디스크 청소 (rust job 과 동일 사유)
+      - name: Free disk space (Linux)
+        if: matrix.platform.runner == 'ubuntu-latest'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost /opt/hostedtoolcache/CodeQL \
+                      "$AGENT_TOOLSDIRECTORY/Ruby" "$AGENT_TOOLSDIRECTORY/Python" \
+                      /usr/local/.ghcup || true
+          sudo apt-get clean
+          df -h /
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # GPUI 링크에 필요한 Linux system lib (rust job 과 동일).
+      - name: Install Linux system deps (GPUI runtime)
+        if: matrix.platform.runner == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libwayland-dev libfontconfig1-dev \
+            libssl-dev pkg-config
+
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: core -> target
-      - name: cargo fmt
-        working-directory: core
-        run: cargo fmt --all -- --check
-      - name: cargo clippy
-        working-directory: core
-        run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: cargo test
-        working-directory: core
-        run: cargo test --workspace
-      - name: cargo check
-        working-directory: core
-        run: cargo check --workspace
+          key: v3-${{ matrix.platform.name }}
+
+      # SPEC-V3-002 AC-T-7: Zig 0.15.2 필수 (moai-studio-terminal 링크 시 build.rs 가 선제 검증).
+      # Build scaffold binary 이전에 설치해야 함 — terminal crate 가 moai-studio bin 에 링크된다.
+      - name: Install Zig 0.15.2
+        uses: mlugg/setup-zig@v2.2.1
+        with:
+          version: 0.15.2
+
+      - name: Cache Zig toolchain (smoke)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/zig
+            ~/Library/Caches/zig
+          key: zig-0.15.2-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build scaffold binary
+        run: cargo build --release --bin moai-studio
+
+      - name: Run scaffold smoke
+        # --scaffold: GPUI 윈도우 생성을 건너뛰고 스캐폴드 로그만 출력 (headless CI runner 대응).
+        run: |
+          ./target/release/moai-studio --scaffold 2>&1 | tee smoke.log
+          grep -q "Scaffold OK" smoke.log || { echo "smoke: missing 'Scaffold OK'"; exit 1; }
+          grep -q "moai-adk plugin: bundled" smoke.log || { echo "smoke: missing 'moai-adk plugin: bundled'"; exit 1; }
+
+      - name: Run terminal spike (headless)
+        # AC-T-7: PR 시 cargo run --example ghostty-spike -- --headless 스모크.
+        # Zig 캐시 hit 시 스모크 전체 wall-clock ≤ 5분 (AC-T-7 목표).
+        run: |
+          cargo run -p moai-studio-terminal --example ghostty-spike --quiet -- --headless 2>&1 | tee terminal-smoke.log
+          grep -q "Scaffold OK" terminal-smoke.log || { echo "terminal-smoke: missing 'Scaffold OK'"; exit 1; }
+
+  # ============================================================
+  # SPEC-V3-002 AC-T-11: pin-policy-guard
+  # - libghostty-rs rev 변경 시 characterization 재실행 + HISTORY SHA 검증 + wrapper scope 라벨링
+  # ============================================================
+  pin-policy-guard:
+    name: SPEC-V3-002 Pin Policy Guard
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect libghostty-rs rev change
+        id: detect
+        run: |
+          # PR base 에서 현재 HEAD 까지 Cargo.toml 의 rev 변경 여부 확인
+          if git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -q '^crates/moai-studio-terminal/Cargo.toml$'; then
+            if git diff origin/${{ github.base_ref }}...HEAD -- crates/moai-studio-terminal/Cargo.toml | grep -qE '^[+-].*rev\s*='; then
+              echo "rev_changed=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "rev_changed=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "rev_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rust toolchain
+        if: steps.detect.outputs.rev_changed == 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Zig 0.15.2
+        if: steps.detect.outputs.rev_changed == 'true'
+        uses: mlugg/setup-zig@v2.2.1
+        with:
+          version: 0.15.2
+
+      - name: Install Linux system deps
+        if: steps.detect.outputs.rev_changed == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon-dev libxkbcommon-x11-dev \
+            libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libwayland-dev libfontconfig1-dev \
+            libssl-dev pkg-config
+
+      # AC-T-11 (i): libghostty_api_compat 재실행 (characterization)
+      - name: Run libghostty_api_compat characterization
+        if: steps.detect.outputs.rev_changed == 'true'
+        run: cargo test -p moai-studio-terminal --test libghostty_api_compat
+
+      # AC-T-11 (ii): spec.md HISTORY 에 old + new SHA 둘 다 포함 검증
+      - name: Check HISTORY SHA coverage
+        if: steps.detect.outputs.rev_changed == 'true'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bash scripts/ci/check-history-sha.sh
+
+      # AC-T-11 (iii): wrapper 외 파일 변경 시 annotation-cycle-required 라벨 부착 (non-blocking)
+      - name: Check wrapper scope
+        if: steps.detect.outputs.rev_changed == 'true'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/check-wrapper-scope.sh
