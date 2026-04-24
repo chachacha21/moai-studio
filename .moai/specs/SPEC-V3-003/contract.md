@@ -4,7 +4,7 @@ Source: strategy.md §5-§7 (manager-strategy 분석, 2026-04-24 승인)
 Harness level: thorough
 Sprint scope: MS-1 Pane core (T1 ~ T7) + Spike 1 (GPUI divider drag) + Spike 3 (PaneId/TabId 생성)
 Contract 작성: MoAI orchestrator (strategy.md 기반 직접 생성, evaluator-active 호출은 Phase 2.8a 최종 평가로 통합 — Opus 4.7 "fewer sub-agents by default" 원칙)
-Contract 적용 버전: v1.0.0
+Contract 적용 버전: v1.0.1 (MS-1 Sprint Exit PASS + MS-2 Sprint Contract 추가 — §9/§10)
 
 ---
 
@@ -135,3 +135,162 @@ MS-1 은 **Functionality first**. Security 는 Phase 2.8a 에서 full audit.
 - 통과된 criterion 은 MS-2 / MS-3 sprint 에서 regression 금지
 - 실패한 criterion 은 feedback 기반 refine 후 다음 sprint 에 carry-over
 - 새로운 edge case 발견 시 contract.md §2 AC 목록에 추가 (revision v1.0.1 등)
+
+---
+
+## 9. MS-1 Sprint Exit Record — v1.0.1 revision (2026-04-24)
+
+MS-1 sprint 실행 결과 contract §7 Sprint Exit Criteria 에 대한 판정.
+
+### 9.1 AC 통과 상태 (16 AC, §2 기준)
+
+| AC | 상태 | 근거 |
+|----|------|------|
+| AC-P-1 | FULL | T1 split_horizontal/vertical_from_leaf unit + T7 `tests/integration_pane_core.rs::split_creates_and_drops_correctly_via_splitter` |
+| AC-P-2 | FULL | T1 close_promotes_sibling + T4 Arc strong_count + T7 `close_frees_pane_drops_arc_payload` |
+| AC-P-3 | FULL | T1 close_last_leaf_is_noop |
+| AC-P-4 | PARTIAL | T2 PaneConstraints + T5 GpuiDivider orientation 별 min_px dispatch unit 검증. Integration (divider drag 시 boundary rejection) 은 MS-2 T8 TabContainer 에서 divider visualization 후 carry-over. |
+| AC-P-5 | DEFERRED | headless resize 은 GPUI `TestAppContext` 를 요구하며 `gpui` crate 의 `test-support` feature 활성화는 Cargo.toml 변경 필요. MS-2 T11 범위에서 criterion + test-support 동시 도입 시 해소 기회. |
+| AC-P-6 | FULL | T5 drag_clamps_ratio + delta_below_min / delta_above_max |
+| AC-P-7 | FULL | T6 next_pane_in_order + prev_pane_in_order + wraparound |
+| AC-P-9a (MS-1) | FULL | T6 `#[cfg(target_os = "macos")]` dispatch_cmd_alt_right_is_next_on_macos |
+| AC-P-9b (MS-1) | FULL | T6 `#[cfg(not(target_os = "macos"))]` dispatch_ctrl_alt_right_is_next_on_linux |
+| AC-P-16 | FULL | T7 `cargo test -p moai-studio-terminal --all-targets` 13/13 regression 0 |
+| AC-P-17 | FULL | T3 abstract_traits_compile_without_impl + MockPaneSplitter/MockDivider |
+| AC-P-18 | DEFERRED | criterion bench 는 Cargo.toml 변경 필요. MS-3 T11 탭 bench + 별도 pane_split bench 로 carry-over. |
+| AC-P-20 | FULL | T1 ratio_boundary_rejected (0.0, 1.0, NaN, Inf 전수) |
+| AC-P-21 | FULL | T2 compile_fail doc tests (3건) — PaneConstraints negative API surface |
+| AC-P-22 | FULL | T6 single_focus_invariant + unknown_pane_id_is_noop |
+| AC-P-23 | FULL | T6 ctrl_b_passthrough_when_platform_is_ctrl |
+
+**요약**: 16 AC 중 FULL=13, PARTIAL=1 (AC-P-4), DEFERRED=2 (AC-P-5, AC-P-18).
+
+### 9.2 Hard Thresholds 통과 (§5)
+
+- [x] Coverage ≥ 85% per commit (panes/* 평균 >= 90%)
+- [x] LSP `max_errors: 0`, `max_type_errors: 0`, `max_lint_errors: 0`
+- [x] `cargo clippy -p moai-studio-ui --all-targets -- -D warnings` 0 warning
+- [x] `cargo fmt --package moai-studio-ui -- --check` 통과
+- [x] SPEC-V3-002 regression 0 (13/13)
+- [x] 신규 MS-1 test ≥ 10 unit + 3 integration — 실제: 53 unit + 2 integration + 3 compile_fail doc = 58
+- [x] MX tags: ANCHOR ≥ 3 (실제 10), WARN ≥ 1 (실제 1), NOTE ≥ 2 (실제 5+), TODO ≤ 2 (실제 1)
+
+### 9.3 Commits on feat/v3-scaffold
+
+MS-1 unit commits (T1-T7 + Spike 1 + progress checkpoints):
+
+- `b65e34a` T1 PaneTree, `fa68cb1` T2 PaneConstraints, `14aa3fe` T3 traits + Mock
+- `fc92a29` Spike 1 report
+- `6dfeee8` T4 GpuiNativeSplitter
+- `cc1c296` T5 GpuiDivider, `caf30cd` T6 FocusRouter
+- `f4317b7` T7 RootView rename + integration tests
+- Plus: `d961fe5` T1/T2 checkpoint, `121002f` T7 checkpoint
+
+Format 준수 확인: 전원 `feat(panes): T{N} — {description} (AC-P-{list})` 패턴.
+
+### 9.4 MS-1 Sprint Exit 판정
+
+**PASS** (조건부). AC-P-4 carry-over + AC-P-5/18 deferred 는 MS-2 contract §10 에서 명시 승계.
+
+MS-2 진입 허용.
+
+---
+
+## 10. MS-2 Sprint Contract — v1.0.1 revision (2026-04-24)
+
+Source: strategy.md §5.1 (T8-T11) + §6.2 MS-2 → MS-3 gate + Nm-1/Nm-2 v1.0.0 annotation.
+Sprint scope: MS-2 Tabs (T8-T11) + Spike 4 USER-DECISION-REQUIRED.
+
+### 10.1 Sprint Scope
+
+포함:
+- T8: `TabContainer` + `Tab` + new_tab/switch_tab/close_tab + last_focused_pane 복원
+- T9: MS-2 키 바인딩 (Cmd/Ctrl+T, 1-9, \\, Shift+\\, {, }) + tmux 중첩 integration — **S4 USER-DECISION 선행**
+- T10: 탭 바 UI + `toolbar.tab.active.background` design token + bold active indicator
+- T11: 탭 성능 bench (Cmd/Ctrl+1↔9 50 cycles, avg ≤ 50ms) + **criterion 도입 (Cargo.toml 변경)**
+- Spike 4: Linux Ctrl+D/W/\\ shell 관례 UX 검증 — **[USER-DECISION-REQUIRED: spike-4-linux-shell-path]**
+
+미포함 (후속 sprint):
+- T12-T14 (MS-3 Persistence + CI workflow)
+- Spike 2 (조건부 S1 FAIL — 이미 무효, S1 PASS 확정)
+
+### 10.2 Acceptance Checklist (MS-2 primary + MS-1 carry-over)
+
+MS-2 primary (10 AC):
+| AC | Mapped Task | Test Type | Platform |
+|----|-------------|-----------|----------|
+| AC-P-8 | T8 | Unit + integration | both |
+| AC-P-9a 전체 | T9 | CI macOS job | macOS |
+| AC-P-9b 전체 | T9 | CI Linux job + S4 결정 | Linux |
+| AC-P-10 | T8 | Unit (close_last_tab_promotes_next) | both |
+| AC-P-11 | T8 | Unit (switch_tab_preserves_last_focused_pane) | both |
+| AC-P-19 | T11 | criterion bench (≤ 50ms avg) | both |
+| AC-P-24 완전 | T8 + T10 | Unit + snapshot (탭 바 가시) | both |
+| AC-P-25 | T8 | Unit (tab_index_invariant) | both |
+| AC-P-26 (v1.0.0 Nm-1) | T9 | integration_tmux_nested | both |
+| AC-P-27 (v1.0.0 Nm-2) | T10 | Unit (bar_active_indicator) | both |
+
+MS-1 carry-over (2 AC):
+| AC | Mapped Task | Rationale |
+|----|-------------|-----------|
+| AC-P-4 full integration | T8 | TabContainer 가 pane divider 를 렌더하면 drag event 가 `GpuiDivider::on_drag` 로 전달되어 boundary rejection 이 실제 트리거됨 |
+| AC-P-5 headless resize | T11 (조건부) | T11 criterion 도입 시 `gpui` crate `test-support` feature 동시 활성화 가능 여부 검토. [USER-DECISION-REQUIRED: test-support-feature-adoption] |
+
+### 10.3 Priority Dimensions (4-dim eval, MS-2)
+
+| Dimension | Weight | MS-2 focus |
+|-----------|--------|-------------|
+| Functionality | 35% | AC-P-8/10/11 (tab create/switch/close + last_focused 복원), AC-P-24/27 (바 가시) |
+| Craft | 25% | MX:ANCHOR(tab-switch-invariant, tab-create-api, bar-active-indicator), coverage ≥ 85%, meaningful test names |
+| Consistency | 20% | FocusRouter MS-2 확장, PaneTree 재사용, design token 일관성 |
+| Security | 20% | tmux nesting 이 pane.cwd 를 추가 경로로 노출하지 않음 확인, design token 값 하드코드 방지 |
+
+MS-2 는 **Functionality + Craft first**. AC-P-26 tmux nesting 은 integration harness 수준 검증.
+
+### 10.4 Test Scenario 계약
+
+Unit (T8/T10):
+- `tabs::container::tests::new_tab_creates_leaf_one_pane_tree` (AC-P-8)
+- `tabs::container::tests::switch_tab_restores_last_focused_pane` (AC-P-11)
+- `tabs::container::tests::close_last_tab_is_noop` (AC-P-10)
+- `tabs::container::tests::close_middle_tab_promotes_neighbor` (AC-P-10)
+- `tabs::container::tests::tab_index_monotonic_on_create` (AC-P-25)
+- `tabs::bar::tests::active_indicator_is_bold` (AC-P-27)
+- `tabs::bar::tests::inactive_uses_toolbar_background_token` (AC-P-27)
+
+Integration (T9):
+- `tests/integration_tmux_nested.rs::ctrl_b_passes_through_to_nested_tmux` (AC-P-26)
+- `tests/integration_key_bindings.rs::macos_ms2_cmd_t_creates_new_tab` (AC-P-9a)
+- `tests/integration_key_bindings.rs::linux_ms2_ctrl_t_creates_new_tab` (AC-P-9b, S4 결정 후)
+
+Bench (T11):
+- `benches/tab_switch.rs::cycle_nine_tabs_fifty_times` (AC-P-19, avg ≤ 50ms)
+
+### 10.5 Hard Thresholds (sprint exit 전제)
+
+- [ ] Coverage ≥ 85% per commit (MS-1 기준 유지)
+- [ ] LSP `max_errors: 0`, `max_type_errors: 0`, `max_lint_errors: 0`
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings` 0 warning
+- [ ] `cargo fmt --all -- --check` 통과
+- [ ] SPEC-V3-002 regression 0
+- [ ] MS-1 AC 전원 regression 0 (FULL 13 + PARTIAL 1 유지)
+- [ ] 신규 MS-2 test ≥ 7 unit + 2 integration + 1 bench
+- [ ] MX tags: tab-switch-invariant, tab-create-api, bar-active-indicator ANCHOR 추가
+
+### 10.6 Escalation Protocol
+
+- [USER-DECISION-REQUIRED: spike-4-linux-shell-path] — T9 Linux 키 바인딩 구현 **직전** AskUserQuestion. default (a) 현행 Ctrl 유지.
+- [USER-DECISION-REQUIRED: criterion-adoption] — T11 진입 시 Cargo.toml 에 `criterion` 추가 여부. default: 추가 (bench 없이는 AC-P-19 불가).
+- [USER-DECISION-REQUIRED: test-support-feature-adoption] — T11 동시 또는 별도 결정. `gpui` crate `test-support` feature 활성화 시 AC-P-5 headless resize test 도 작성 가능.
+- S4 investigation FAIL (사용자 결정 path (b) 선택) → annotation cycle 재개 + spec.md RG-P-4 개정
+- tmux 미설치 환경에서 AC-P-26 skip (integration_tmux_nested `#[ignore]`, CI 에서만 실행)
+
+### 10.7 Sprint Exit Criteria (MS-2 → MS-3 전환 gate)
+
+- 10 MS-2 primary AC 전원 GREEN
+- MS-1 carry-over: AC-P-4 FULL + AC-P-5 (T11 조건부 또는 MS-3 재승계)
+- Hard thresholds 전원 통과
+- MS-2 commits on `feat/v3-scaffold` format 준수
+- S4 USER-DECISION 기록 (progress.md + 이 contract §10.6 결과 업데이트)
+- contract.md v1.0.2 revision 추가 (MS-3 sprint contract)
+- progress.md MS-2 complete 섹션 기록

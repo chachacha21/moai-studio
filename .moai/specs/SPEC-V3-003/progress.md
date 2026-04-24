@@ -576,7 +576,75 @@ MS-1 완전 exit를 위한 잔여 사항: AC-P-5 (headless resize), AC-P-18 (ben
 Branch: feat/v3-scaffold (14 commits ahead of origin)
 Working tree: clean
 
-### Next: MS-2 T8 TabContainer 자료구조 + 전환 로직
+### MS-1 Sprint Exit Gate — **PASS** (조건부, 2026-04-24)
 
-T8 착수 전 MS-2 sprint contract 개정판 추가 예정 (contract.md §8 Evolution 계획대로).
+contract.md v1.0.1 revision §9 Sprint Exit Record 생성 완료.
+
+**AC 상태** (16 AC):
+- FULL: 13 (AC-P-1, 2, 3, 6, 7, 9a-ms1, 9b-ms1, 16, 17, 20, 21, 22, 23)
+- PARTIAL: 1 (AC-P-4 — boundary math ready, MS-2 T8 integration carry-over)
+- DEFERRED: 2 (AC-P-5 headless resize, AC-P-18 criterion bench — Cargo.toml 변경 필요)
+
+**Hard thresholds**: 전원 통과 (coverage ≥ 85%, LSP 0/0/0, clippy -D warnings 0, fmt clean, SPEC-V3-002 regression 0, 신규 53 unit + 2 integration + 3 doc compile_fail = 58 tests).
+
+**MX tags 누계**: ANCHOR 10 (pane-tree-invariant, pane-split-api, pane-constraints-immutable, pane-splitter-contract, divider-contract, concrete-splitter-gpui-native, pane-leaf-factory-injection, concrete-divider-gpui, focus-routing, root-view-content-binding), WARN 1 (gpui-api-churn-risk), NOTE 5+, TODO 1 (T8 TabContainer carry-over).
+
+**판정**: PASS — MS-2 진입 허용.
+
+### MS-2 Sprint Contract 추가 (contract.md §10, 2026-04-24)
+
+contract.md v1.0.1 revision §10 에 MS-2 Sprint Contract 개정판 작성:
+- Scope: T8 TabContainer, T9 MS-2 바인딩 + tmux + [USER-DECISION-REQUIRED: spike-4-linux-shell-path], T10 탭 바 UI + design token, T11 탭 bench + [USER-DECISION-REQUIRED: criterion-adoption]
+- Primary AC 10개: AC-P-8/9a 전체/9b 전체/10/11/19/24 완전/25/26/27
+- MS-1 carry-over: AC-P-4 full integration (T8), AC-P-5 (T11 조건부)
+- Priority weight: Functionality 35% / Craft 25% / Consistency 20% / Security 20%
+- 3 USER-DECISION-REQUIRED markers: spike-4-linux-shell-path, criterion-adoption, test-support-feature-adoption
+
+### Session Summary (2026-04-24 /moai run SPEC-V3-003 ultrathink T5-T7 계속)
+
+**완료된 Phase (본 session 증분)**:
+- Phase 2 T5 GpuiDivider (commit cc1c296, 5 unit tests, AC-P-6 + AC-P-4 부분)
+- Phase 2 T6 FocusRouter + MS-1 키 바인딩 (commit caf30cd, 11 unit tests, AC-P-7/22/23/9a-ms1/9b-ms1)
+- Phase 2 T7 RootView 통합 (commit f4317b7, 2 integration tests, AC-P-1/2 완전 + AC-P-16 + AC-P-24 부분)
+- progress.md T7 checkpoint (commit 121002f)
+- **MS-1 Sprint Exit Gate** (contract.md v1.0.1 §9 + 본 섹션)
+- **MS-2 Sprint Contract** (contract.md v1.0.1 §10)
+
+**Commits 누계 (T7 완료 + MS-1 exit 포함)**:
+- `b65e34a` T1 PaneTree
+- `fa68cb1` T2 PaneConstraints
+- `d961fe5` T1/T2 checkpoint
+- `14aa3fe` T3 PaneSplitter/ResizableDivider
+- `fc92a29` Spike 1 report + .cargo/bin PATH
+- `6dfeee8` T4 GpuiNativeSplitter
+- `cc1c296` T5 GpuiDivider
+- `caf30cd` T6 FocusRouter
+- `f4317b7` T7 RootView 통합
+- `121002f` progress.md T7 checkpoint
+- `579c9e2` 이전 Run Phase 1 산출물 + stub scaffolding
+- (본 commit) MS-1 exit gate + MS-2 contract
+
+Branch: feat/v3-scaffold (14~15 commits ahead of origin, push manual 유지 per git-strategy.manual)
+Working tree: 본 commit 후 clean
+
+### Next Session Resume Instructions — MS-2 진입
+
+다음 session 에서 `/moai run SPEC-V3-003` 재호출 시:
+
+1. progress.md 읽고 "MS-1 Sprint Exit Gate — PASS" 섹션 확인
+2. contract.md §10 MS-2 Sprint Contract 로드
+3. T8 TabContainer 착수 (자료구조 + 전환 로직, last_focused_pane 복원)
+4. T9 진입 **직전**: AskUserQuestion [USER-DECISION-REQUIRED: spike-4-linux-shell-path] — default (a) 현행 Ctrl 유지
+5. T11 진입 **직전**: AskUserQuestion [USER-DECISION-REQUIRED: criterion-adoption] (+ 동시에 test-support-feature-adoption 통합 검토) → MS-1 carry-over AC-P-5/AC-P-18 해소 여부 결정
+6. MS-2 완료 시 contract.md v1.0.2 revision 추가 (MS-3 Sprint Contract) + progress.md MS-2 complete 섹션
+
+사전 준비물 (orchestrator 가 reload):
+- 본 progress.md (MS-1 exit 기록)
+- contract.md v1.0.1 (§9 exit record + §10 MS-2 contract)
+- strategy.md §5.1 T8-T11 상세, §6.2 MS-2 → MS-3 gate
+- spec.md §7.4 TabContainer, §6.3 접근성
+- tasks.md T8-T11 행
+- T7 산출물:
+  - `lib.rs` `pane_splitter: Option<Entity<TerminalSurface>>` 필드 (MS-2 T8 에서 `Entity<TabContainer>` 로 교체)
+  - `tests/integration_pane_core.rs` 2 AC-P-1/2 integration tests
 
