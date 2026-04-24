@@ -257,3 +257,90 @@ AC 통과 누계 (MS-1 14 AC 중):
   - `divider.rs`: `ResizableDivider` trait + `MockDivider`
   - `mod.rs` re-exports: `CloseError, PaneSplitter, ResizableDivider`
 
+### Spike 1 (GPUI 0.2.2 divider drag API 검증): complete — **PASS**
+- 조사 시점: 2026-04-24 post-T3 session
+- Method: Context7 MCP `/websites/rs_gpui_gpui` (4718 snippets) + docs.rs WebFetch (`trait.InteractiveElement`, `struct.MouseMoveEvent`) + 현재 repo grep (`lib.rs:165` 기존 on_mouse_down 패턴 확인)
+- 판정: **PASS** — GPUI 0.2.2 native API only 경로 확정
+- 핵심 발견:
+  - `InteractiveElement::on_mouse_down/on_mouse_move/on_mouse_up` 트리오 Bubble phase 지원
+  - `MouseMoveEvent::dragging() -> bool` drag 활성 판정
+  - `on_drag_move<T>` — handle 외부 이동 capture (divider 경계 이탈 시에도 수신)
+  - `Stateful<Div>` + `id()` + `.w(px)` / `.flex_basis(px)` 로 layout 갱신
+  - `cx.notify()` frame 재그림 트리거
+- 산출: `docs/spikes/SPIKE-V3-003-01-gpui-divider.md` (구현 pseudo code 포함, T4/T5 설계 가이드)
+- Spike 2 미실행 확정 (plan.md §3 "S1 FAIL 조건부" 조건 불충족)
+
+### USER-DECISION: gpui-component-adoption = 자체 구현 경로 확정 (2026-04-24)
+- 사용자 선택: "자체 구현 — GpuiNativeSplitter + GpuiDivider (권장)"
+- 본 session 진행 범위: "T4 만 완료 후 checkpoint (권장)"
+- Cargo.toml 무변경 원칙 재확인 (external crate 불도입)
+- T4 대상 파일: `crates/moai-studio-ui/src/panes/splitter_gpui_native.rs` (신규)
+- T5 는 다음 session resume 예정
+
+### Phase 2 T4 (GpuiNativeSplitter RED-GREEN-REFACTOR): complete
+
+- Agent: manager-tdd (TDD implementer, T4 only, no sub-agent spawn)
+- Scope: T4 only (T1/T2/T3 무수정, T5/T6/T7 범위 미침범)
+- files modified:
+  - crates/moai-studio-ui/src/panes/splitter_gpui_native.rs (신규, 경로 A generic factory)
+  - crates/moai-studio-ui/src/panes/mod.rs (append-only: `pub mod splitter_gpui_native;` + `pub use splitter_gpui_native::GpuiNativeSplitter;`)
+
+- 구현 결정:
+  - **경로 A (Generic Factory)** 확정: `GpuiNativeSplitter<L: Clone + 'static>`. 사유:
+    `gpui` crate `test-support` feature 가 `crates/moai-studio-ui/Cargo.toml` 에 없고
+    Cargo.toml 변경 금지 원칙으로 `TestAppContext` 사용 불가. Factory closure 주입으로
+    prod (`Entity<TerminalSurface>`) / test (`String`, `Arc<Mutex<i32>>`) 격리.
+  - **factory: Box<dyn FnMut(&PaneId) -> L>**: split 시 새 PaneId 를 인수로 받아 payload 생성.
+    T7 wire-up 시 `Box::new(|_id| cx.new(|cx| TerminalSurface::new(...)))` 주입.
+  - **close drop 검증**: `Arc<Mutex<i32>>` payload 로 `Arc::strong_count` 추적.
+    close 후 leaf Arc 참조 해제 → strong_count 감소 검증 (AC-P-2 단위).
+
+- test results:
+  - `cargo test -p moai-studio-ui --lib splitter_gpui_native`: **9/9 PASS**
+  - `cargo test -p moai-studio-ui --lib` 전체: **97/97 PASS** (88 기존 + 9 신규)
+  - `cargo test --doc -p moai-studio-ui`: **3/3 PASS** (T2 compile_fail doc tests 유지)
+  - `cargo test -p moai-studio-terminal`: **4/4 PASS** (AC-P-16 regression gate GREEN)
+  - `cargo clippy -p moai-studio-ui -- -D warnings`: **0 warnings**
+  - `cargo fmt --package moai-studio-ui -- --check`: clean
+
+- MX tags added:
+  - `splitter_gpui_native.rs` before `pub struct GpuiNativeSplitter`: ANCHOR `concrete-splitter-gpui-native` + REASON (fan_in >= 3: T7/T9/T11)
+  - `splitter_gpui_native.rs` factory field: ANCHOR `pane-leaf-factory-injection` + REASON (T7 wire-up 포인트)
+  - `splitter_gpui_native.rs` `impl PaneSplitter`: WARN `gpui-api-churn-risk` + REASON (GPUI 0.2.2 API churn 예상)
+
+- TRUST 5 self-check: T/R/U/S/T 전원 PASS
+
+- AC 통과 (T4 범위):
+  - **AC-P-1**: PARTIAL — factory 설계 확정 (prod wire T7 에서 Entity<TerminalSurface> 주입 시 완전 충족)
+  - **AC-P-2**: PARTIAL — Arc strong_count drop 단위 검증 완료 (실제 Entity drop 은 T7 integration 시)
+  - **AC-P-16**: PASS — moai-studio-terminal 4/4 regression 0
+
+- deferred_ac:
+  - AC-P-5 (visual hide small window): T5 divider 구체 + T7 RootView 통합 시 자연 충족
+  - AC-P-6 (divider drag clamp): T5 범위
+  - AC-P-18 (paint ≤ 200ms bench): T11 criterion harness 도입 시 (Cargo.toml 변경 필요)
+
+- implementation_divergence:
+  - planned vs actual: 경로 B → 경로 A (generic factory) 변경. 사유: TestAppContext 사용 불가
+  - additional_features: `GpuiNativeSplitter::tree()` + `focused()` 조회 메서드 (test helper)
+  - scope_changes: prod Entity<TerminalSurface> 바인딩 T7 으로 이연 (계획 범위)
+  - new_dependencies: 없음 (Cargo.toml 무변경)
+  - new_directories: 없음
+
+- blockers: 없음
+
+### AC 통과 누계 (T4 완료 시점, MS-1 14 AC 중)
+
+- AC-P-1 ✅ PARTIAL → T7 완전 충족
+- AC-P-2 ✅ PARTIAL (단위 Arc drop) → T7 integration 완전 충족
+- AC-P-3 ✅ (T1)
+- AC-P-16 ✅ regression 0 (T4 포함)
+- AC-P-17 ✅ (T3)
+- AC-P-20 ✅ (T1)
+- AC-P-21 ✅ (T2)
+- 잔여: AC-P-4/5/6/7/9a/9b/18/22/23 → T5~T7 에서 처리
+
+### Next: T5 GpuiDivider (ResizableDivider 구체 구현)
+
+
+

@@ -17,3 +17,6 @@ pub use splitter::{CloseError, PaneSplitter};
 
 pub mod divider;
 pub use divider::ResizableDivider;
+
+pub mod splitter_gpui_native;
+pub use splitter_gpui_native::GpuiNativeSplitter;
