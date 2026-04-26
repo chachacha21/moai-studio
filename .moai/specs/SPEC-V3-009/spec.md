@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3-009
 version: 1.0.0
-status: draft
+status: ms1-implemented
 created_at: 2026-04-25
 updated_at: 2026-04-25
 author: MoAI (manager-spec)
