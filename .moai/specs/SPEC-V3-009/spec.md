@@ -1,9 +1,9 @@
 ---
 id: SPEC-V3-009
 version: 1.0.0
-status: ms1-implemented
+status: implemented
 created_at: 2026-04-25
-updated_at: 2026-04-25
+updated_at: 2026-04-26
 author: MoAI (manager-spec)
 priority: High
 issue_number: 0
@@ -22,6 +22,7 @@ revision: v1.0.0 (initial draft, v2 SPEC-M5 Kanban reference 부활)
 | 버전 | 날짜 | 변경 |
 |------|------|------|
 | 1.0.0-draft | 2026-04-25 | 초안 작성. moai-adk 와 가장 직접적으로 통합되는 UI 의 정의. v2 design SPEC-M5 (Kanban) 의 의도를 v3 GPUI 0.2.2 위에서 부활. RG-SU-1 ~ RG-SU-6, AC-SU-1 ~ AC-SU-12, MS-1/MS-2/MS-3, USER-DECISION 3 게이트. SPEC-V3-004 (render) 선행, V3-005/006/010 와 병행 가능. terminal/panes/tabs core 무변경 (RG-P-7 carry). |
+| 1.0.0 | 2026-04-26 | 전체 구현 완료. MS-1 (#30) Parser + AC tracker + List/Detail (AC-SU-1~5). MS-2 (#31) Kanban Board + sidecar persist (AC-SU-6/7), USER-DECISION-SU-B = (a) keyboard-only. MS-3 (#32) git branch parser + moai CLI subprocess + Sprint Contract panel (AC-SU-8/9/10/11/12), USER-DECISION-SU-C = (a) subprocess+stream-json. terminal/panes/tabs/RootView 0 byte change (N6 carry). RootView 진입점 등록은 후속 SPEC 위임. status: ms1-implemented → implemented. |
 
 ---
 
