@@ -154,8 +154,8 @@ fn filter_files(files: &[String], query: &str) -> Vec<PaletteItem> {
             fuzzy_match(query, f).map(|(score, _)| (score, PaletteItem::new(f.clone(), f.clone())))
         })
         .collect();
-    // 점수 내림차순 정렬.
-    results.sort_by(|a, b| b.0.cmp(&a.0));
+    // Sort by score descending.
+    results.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
     results.into_iter().map(|(_, item)| item).collect()
 }
 

@@ -161,7 +161,7 @@ fn filter_slash_commands(commands: &[(String, String)], query: &str) -> Vec<Pale
                 .map(|(score, _)| (score, PaletteItem::new(id.clone(), label.clone())))
         })
         .collect();
-    results.sort_by(|a, b| b.0.cmp(&a.0));
+    results.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
     results.into_iter().map(|(_, item)| item).collect()
 }
 

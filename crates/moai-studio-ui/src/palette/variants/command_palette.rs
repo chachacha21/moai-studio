@@ -180,7 +180,7 @@ fn filter_commands(commands: &[CommandEntry], query: &str) -> Vec<PaletteItem> {
                 .map(|(score, _)| (score, PaletteItem::new(c.id.clone(), c.label.clone())))
         })
         .collect();
-    results.sort_by(|a, b| b.0.cmp(&a.0));
+    results.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
     results.into_iter().map(|(_, item)| item).collect()
 }
 

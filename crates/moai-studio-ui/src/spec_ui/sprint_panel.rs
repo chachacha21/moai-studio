@@ -46,9 +46,9 @@ impl SprintContractPanel {
     /// spec.md 텍스트에서 직접 생성한다 (테스트용 직접 경로).
     pub fn from_text(spec_md_text: &str) -> Self {
         let mut revisions = parse_sprint_contracts(spec_md_text);
-        // most-recent-first: section 번호 내림차순 정렬 (REQ-SU-052)
-        // (major, minor) 쌍에서 major 내림차순 → minor 내림차순
-        revisions.sort_by(|a, b| b.section.cmp(&a.section));
+        // Most-recent-first: descending section ordering (REQ-SU-052).
+        // (major, minor) tuple — major desc, then minor desc.
+        revisions.sort_by_key(|r| std::cmp::Reverse(r.section));
         Self {
             revisions,
             selected_idx: None,
