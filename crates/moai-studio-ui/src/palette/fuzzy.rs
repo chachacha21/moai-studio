@@ -353,7 +353,7 @@ mod tests {
             .iter()
             .filter_map(|c| fuzzy_match(query, c).map(|(s, _)| (s, *c)))
             .collect();
-        results.sort_by(|a, b| b.0.cmp(&a.0));
+        results.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
         // 모두 매칭되어야 함.
         assert_eq!(results.len(), 4, "모든 후보가 매칭되어야 함");
         // 첫 번째와 두 번째는 "rs"로 시작하거나 더 관련성이 높아야 함.
