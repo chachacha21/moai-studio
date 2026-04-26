@@ -47,42 +47,70 @@ hotfix/v{x.y.z+1}-{slug} (main 에서 분기, production 긴급 수정)
 
 ## 2. Branch Protection Rules [HARD — GitHub Settings]
 
-GitHub 저장소 `Settings → Branches → Branch protection rules` 에서 다음 규칙을 적용한다. 본 저장소는 현재 수동 설정 필요.
+`modu-ai/moai-studio` 저장소의 branch protection rules. **2026-04-26 활성 완료** (gh api 로 적용, settings 동기화).
 
-### 2.1 `main` 브랜치
+### 2.1 `main` 브랜치 (활성, 2026-04-26)
 
-- [ ] Require a pull request before merging
-  - Require approvals: **1**
+- [x] Require a pull request before merging
+  - Required approvals: **1**
   - Dismiss stale approvals when new commits are pushed: **on**
-- [ ] Require status checks to pass
-  - CI workflows: `ci-rust`, (향후) `ci-v3-pane` 등 모든 필수
-  - Require branches to be up to date before merging: **on**
-- [ ] Require linear history: **off** (release/hotfix 머지 커밋 보존 목적)
-- [ ] Include administrators: **on**
-- [ ] Restrict who can push: 관리자 외 차단 (direct push 금지)
-- [ ] Allow force pushes: **off** (absolute)
-- [ ] Allow deletions: **off**
+- [x] Require status checks to pass — strict (브랜치 up-to-date 강제)
+  - Required contexts (7): `fmt (macOS)`, `fmt (Linux)`, `clippy (macOS)`, `clippy (Linux)`, `test (macOS)`, `bench-smoke (macOS)`, `bench-smoke (Linux)`
+  - **Excluded** (별개 이슈, 추후 SPEC 으로 fix 후 추가): `test (Linux)` (active_branch_returns_none_when_no_git), `tmux-test (macOS)` (file watcher flaky), `tmux-test (Linux)` (느린 cache 빌드)
+- [x] Allow force pushes: **off**
+- [x] Allow deletions: **off**
+- [ ] Include administrators: **off** (긴급 hotfix 우회 허용 — v0.1.0 release 후 on 재검토)
 
-### 2.2 `release/*` 브랜치 (wildcard)
+### 2.2 `release/*` 브랜치 (wildcard, 미설정)
 
-- [ ] Require a pull request before merging
-  - Require approvals: **1**
-- [ ] Require status checks to pass — CI 전체
-- [ ] Restrict who can push: 릴리스 담당자만
-- [ ] Allow force pushes: **off**
-- [ ] Allow deletions: **on** (릴리스 완료 후 정리 가능)
+- [ ] 활성 release branch 부재로 미설정. 첫 `release/v0.1.0` 분기 시점에 활성:
+  - Required approvals: 1
+  - Required status checks: §2.1 와 동일 7 contexts
+  - Allow deletions: **on** (release 완료 후 정리)
+  - Allow force pushes: **off**
 
-### 2.3 `develop` 브랜치 (selective)
+### 2.3 `develop` 브랜치 (활성, 2026-04-26)
 
-- [ ] Require a pull request: **on** (권장)
-- [ ] Require status checks: CI 전체
-- [ ] Allow force pushes: **off**
-- [ ] Include administrators: **off** (긴급 시 관리자 예외 허용)
+- [x] Require a pull request before merging
+  - Required approvals: **0** (single-developer self-merge 허용)
+  - Dismiss stale approvals: on
+- [x] Require status checks to pass — strict
+  - Required contexts: §2.1 와 동일 7 contexts
+- [x] Allow force pushes: **off**
+- [x] Allow deletions: **off**
+- [ ] Include administrators: **off** (긴급 직접 commit 허용 — config chore 등)
 
-설정 완료 후 체크박스 체크 및 날짜 기록:
-- [ ] main: 미설정
-- [ ] release/*: 미설정
-- [ ] develop: 미설정
+### 2.4 Auto-merge 운영
+
+`modu-ai/moai-studio` 의 repo 설정 (2026-04-26 활성):
+
+- `allow_auto_merge: true` — PR 에서 auto-merge 토글 가능
+- `delete_branch_on_merge: true` — 머지 후 feature 브랜치 자동 삭제
+- `allow_squash_merge: true` (feature → develop)
+- `allow_merge_commit: true` (release/hotfix → main, develop → release)
+- `allow_rebase_merge: false` (사용 안 함)
+
+**Auto-merge 사용 패턴:**
+
+```bash
+# PR 생성 직후 auto-merge 활성 (squash)
+gh pr create --base develop --title "..." --body "..."
+gh pr merge --auto --squash <PR#>
+
+# release / hotfix → main 은 merge commit
+gh pr merge --auto --merge <PR#>
+```
+
+Auto-merge 동작:
+- 모든 required status check (§2.1 의 7 contexts) PASS 시 자동 머지
+- required approvals 미충족 시 대기 (main 의 경우)
+- conflict 발생 시 auto-merge 자동 해제 — 수동 rebase/resolve 후 재활성
+
+설정 완료:
+- [x] main: 활성 2026-04-26
+- [ ] release/*: 미설정 (v0.1.0 분기 시 활성)
+- [x] develop: 활성 2026-04-26
+- [x] auto-merge / delete-branch-on-merge: 활성 2026-04-26
 
 ---
 
@@ -264,7 +292,9 @@ merge(<release|hotfix>): <source> → <target> [v{x.y.z}]
 Phase 3 PR 생성 시:
 - base branch: `develop` (main 대신)
 - PR 라벨 추천 (type/area 필수, priority 선택)
-- Squash merge 는 PR UI 에서 선택 (스킬 자동화 대상 아님, 수동 승인)
+- Auto-merge 활성: PR 생성 직후 `gh pr merge --auto --squash <PR#>` 호출 권장 (§2.4)
+- Required status checks (§2.1 의 7 contexts) PASS 시 자동 머지
+- conflict 또는 별개 이슈 fail 시 auto-merge 자동 해제 — 수동 개입
 
 ### 7.3 SPEC-V3-003 현재 상태 (2026-04-24 기준)
 
@@ -351,10 +381,11 @@ v0.1.0 릴리스 시점에:
 
 ---
 
-Version: 1.1.0
+Version: 1.2.0
 Last Updated: 2026-04-26
-Scope: github.com/GoosLab/moai-studio
+Scope: github.com/modu-ai/moai-studio (transferred from GoosLab/moai-studio 2026-04-26)
 
 Changelog:
+- 1.2.0 (2026-04-26): §2 branch protection 활성 (main + develop, 7 required contexts), §2.4 Auto-merge 운영 가이드 신설. §7.2 sync subcommand 에 auto-merge 패턴 주입. Repo transfer (GoosLab → modu-ai).
 - 1.1.0 (2026-04-26): §9 Code Comments Policy 신설 (HARD: 모든 코드 주석 영어). Troubleshooting → §10 이동. CI billing / Release Drafter config troubleshooting 항목 추가.
 - 1.0.0 (2026-04-24): 초안. Enhanced GitHub Flow + 3축 라벨 + Release Drafter + branch protection 가이드.
