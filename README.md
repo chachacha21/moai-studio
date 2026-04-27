@@ -7,7 +7,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.93%2B-orange.svg)](https://www.rust-lang.org/)
 [![Pane CI](https://github.com/modu-ai/moai-studio/actions/workflows/ci-v3-pane.yml/badge.svg?branch=develop)](https://github.com/modu-ai/moai-studio/actions/workflows/ci-v3-pane.yml)
 [![Rust CI](https://github.com/modu-ai/moai-studio/actions/workflows/ci-rust.yml/badge.svg?branch=develop)](https://github.com/modu-ai/moai-studio/actions/workflows/ci-rust.yml)
-![Status](https://img.shields.io/badge/status-pre--v0.1.0-yellow.svg)
+![Status](https://img.shields.io/badge/status-v0.1.0-green.svg)
 
 **저장소**: `github.com/modu-ai/moai-studio` (2026-04-26 GoosLab에서 modu-ai org로 이전)  
 **언어**: Pure Rust  
@@ -37,8 +37,9 @@ MoAI Studio는 **SPEC-first 개발 방법론을 구현한 크로스플랫폼 Age
 | **V3 Scaffold** | ✅ 완료 | 23개 Rust crate 컴파일, 기본 UI/Terminal 구조 |
 | **SPEC-V3-001~013** | 🔄 진행 중 | 핵심 Agent IDE 기능, Pane system, Terminal multiplexing |
 | **SPEC-V3-011 MS-1** | ✅ 완료 | macOS (.app), Linux (.deb + .AppImage), Windows (.msi) 패키징 infra |
-| **v0.1.0 (unsigned)** | 📅 예정 | GitHub Releases 자동 배포, GHA billing 복구 후 |
-| **MS-2 (signed)** | 📅 차기 | macOS codesign + notarize, Windows EV signtool 인증 |
+| **v0.1.0 (unsigned)** | ✅ 첫 정식 릴리스 | GitHub Releases unsigned 배포 (USER-DECISION-PK-B (b) 결정) |
+| **SPEC-V3-DIST-001** | 📅 ready (구현 예정) | Homebrew Cask + Scoop bucket + AUR + AppImage 무료 배포 채널 등록 |
+| **MS-2 (signed)** | 📅 차기 | macOS codesign + notarize, Windows EV signtool 인증 (인증서 보유 시) |
 | **MS-3 (auto-update)** | 📅 차기 | Ed25519 서명, GitHub Releases JSON manifest 기반 자동 업데이트 |
 
 ---
@@ -146,7 +147,69 @@ v0.1.0 릴리스 후 [GitHub Releases](https://github.com/modu-ai/moai-studio/re
 - **Linux**: `moai-studio-v0.1.0.deb`, `moai-studio-v0.1.0.AppImage`
 - **Windows**: `moai-studio-v0.1.0.msi`
 
-**주의**: 현재는 unsigned 배포입니다 (MS-2에서 서명 예정).
+**주의**: 현재는 unsigned 배포입니다 (MS-2에서 서명 예정). 첫 실행 시 OS별 우회 작업이 필요합니다 — 아래 [Known Limitations](#known-limitations-v010) 섹션 참조.
+
+---
+
+## Known Limitations (v0.1.0)
+
+v0.1.0은 OS 레벨 인증서 미보유 상태로 release됩니다 (USER-DECISION-PK-B (b) 결정, 2026-04-27). 사용자는 다음 한 번의 우회 작업이 필요하며, 이후 일반 앱과 동일하게 동작합니다.
+
+### macOS — Gatekeeper quarantine 제거
+
+다운로드한 `.dmg`를 마운트하고 `moai-studio.app`을 `/Applications/`로 드래그한 후, 터미널에서 다음 명령을 한 번 실행:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/moai-studio.app
+open /Applications/moai-studio.app
+```
+
+또는 `Finder → moai-studio.app 우클릭 → "열기" → "열기"` 1회. 이후 Spotlight/Launchpad에서 일반 앱처럼 실행 가능.
+
+### Windows — SmartScreen 우회
+
+`.msi` 더블클릭 시 "Windows protected your PC" 경고가 표시됩니다.
+
+```
+1. 경고 화면에서 "More info" 클릭
+2. "Run anyway" 클릭
+```
+
+이후 시작 메뉴에서 일반 앱처럼 실행 가능.
+
+### Linux — 무서명 표준
+
+`.deb` / `.AppImage` 모두 별 인증 작업 없이 실행됩니다.
+
+```bash
+# Debian/Ubuntu
+sudo dpkg -i moai-studio-v0.1.0.deb
+
+# AppImage (모든 distribution)
+chmod +x moai-studio-v0.1.0.AppImage
+./moai-studio-v0.1.0.AppImage
+```
+
+### 향후 패키지 매니저 채널 (post-v0.1.0)
+
+[SPEC-V3-DIST-001](./.moai/specs/SPEC-V3-DIST-001/spec.md) (status: ready, 2026-04-27) 구현 시 다음 채널을 통해 quarantine / SmartScreen 우회가 자동 처리됩니다:
+
+- **macOS**: `brew tap modu-ai/tap && brew install --cask moai-studio` (`modu-ai/homebrew-tap`)
+- **Windows**: `scoop bucket add moai https://github.com/modu-ai/scoop-bucket && scoop install moai-studio` (`modu-ai/scoop-bucket`)
+- **Arch Linux**: `yay -S moai-studio-bin` (AUR, 등록 예정)
+
+진행 상황은 SPEC-V3-DIST-001 의 milestone 표를 참고하세요.
+
+### 알려진 carry-over 제약
+
+v0.1.0은 V3 아키텍처의 minimum-viable surface로 한정됩니다. 다음 SPEC들은 v0.1.x patch 또는 v0.2.0+ backlog로 이월됩니다:
+
+- SPEC-V3-005 (File Explorer)
+- SPEC-V3-006 (Markdown / Code Viewer)
+- SPEC-V3-007 ~ 010 (Agent Dashboard, SPEC Management UI 등)
+- SPEC-V3-DIST-001 (배포 채널 등록 — 위 안내 참조)
+
+자세한 분류는 [.moai/specs/RELEASE-V0.1.0/plan.md](./.moai/specs/RELEASE-V0.1.0/plan.md) §1.2 참고.
 
 ---
 
