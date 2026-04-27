@@ -1,23 +1,23 @@
 # MoAI Studio 로컬 운영 지침
 
-본 문서는 `moai-studio` 레포의 **프로젝트 로컬 운영 규칙**을 정의한다. `CLAUDE.md` (프레임워크 공통) 를 보완하며, **정식 v0.1.0 릴리스 전까지** 적용되는 Enhanced GitHub Flow 전략을 명시한다.
+본 문서는 `moai-studio` 레포의 **프로젝트 로컬 운영 규칙**을 정의한다. `CLAUDE.md` (프레임워크 공통) 를 보완하며, **GitHub Flow** 전략을 명시한다.
 
-Scope: 본 레포 (`github.com/GoosLab/moai-studio`) 한정. MoAI-ADK 프레임워크 저장소 (`moai-adk-go`) 에는 적용되지 않는다.
+> **2026-04-27 변경**: Enhanced GitHub Flow에서 GitHub Flow로 전환. develop 브랜치 폐지. feature 브랜치에서 직접 main으로 머지.
+
+Scope: 본 레포 (`github.com/modu-ai/moai-studio`) 한정. MoAI-ADK 프레임워크 저장소 (`moai-adk-go`) 에는 적용되지 않는다.
 
 ---
 
-## 1. Branch Model (Enhanced GitHub Flow)
+## 1. Branch Model (GitHub Flow)
 
-현재 de-facto 패턴을 유지하며 `release/*` 와 `hotfix/*` 두 종류를 공식화한다.
+단순하고 직관적인 GitHub Flow를 사용한다.
 
 ```
-main                     (stable, v0.1.0+ tagged releases 만 포함)
- └── release/v{x.y.z}    (release freeze branch, QA + final patch)
-      └── develop        (integration, feature 머지 집합)
-           ├── feature/SPEC-XXX-short-desc
-           ├── feature/SPEC-V3-003-ms2  (예시)
-           └── feat/v3-scaffold         (legacy — 점진 이관)
-hotfix/v{x.y.z+1}-{slug} (main 에서 분기, production 긴급 수정)
+main                          (stable, v0.1.0+ tagged releases 만 포함)
+ ├── feature/SPEC-XXX-short-desc
+ ├── feature/SPEC-V3-003-ms2  (예시)
+ └── feat/v3-scaffold         (legacy — 점진 이관)
+hotfix/v{x.y.z+1}-{slug}      (main 에서 분기, production 긴급 수정)
 ```
 
 ### 1.1 각 브랜치 수명/역할
@@ -25,17 +25,15 @@ hotfix/v{x.y.z+1}-{slug} (main 에서 분기, production 긴급 수정)
 | 브랜치 | 수명 | 분기 원 | 머지 대상 | 상태 |
 |--------|------|---------|-----------|------|
 | `main` | 영구 | — | — | 정식 릴리스만 포함. tag 부착. |
-| `develop` | 영구 | `main` | `release/*` | feature 통합. CI GREEN 유지. |
-| `release/v{x.y.z}` | 임시 | `develop` | `main` + back-merge `develop` | 릴리스 전 최종 QA. 새 feature 금지, bug fix 만 허용. |
-| `feature/SPEC-XXX-...` | 임시 | `develop` | `develop` | SPEC 단위 1개. 머지 후 삭제. |
-| `hotfix/v{x.y.z+1}-{slug}` | 임시 | `main` | `main` + back-merge `develop` (있다면 `release/*`) | production 긴급. |
+| `feature/SPEC-XXX-...` | 임시 | `main` | `main` | SPEC 단위 1개. 머지 후 삭제. |
+| `hotfix/v{x.y.z+1}-{slug}` | 임시 | `main` | `main` | production 긴급. |
 
 ### 1.2 Hotfix 브랜치 명명 규칙 [HARD]
 
 - 포맷: `hotfix/v{major}.{minor}.{patch+1}-{short-slug-kebab-case}`
 - 예시: `hotfix/v0.1.1-pane-focus-crash`, `hotfix/v0.1.2-pty-fd-leak`
 - `{short-slug-kebab-case}` 은 2~5 단어, 영문 소문자, 하이픈 구분.
-- 머지 시 반드시 `main` 과 `develop` 양쪽에 반영 (back-merge). `release/*` 가 활성 상태라면 거기에도 back-merge.
+- 머지 시 `main` 에만 반영.
 
 ### 1.3 Feature 브랜치 명명 규칙
 
@@ -49,6 +47,8 @@ hotfix/v{x.y.z+1}-{slug} (main 에서 분기, production 긴급 수정)
 
 `modu-ai/moai-studio` 저장소의 branch protection rules. **2026-04-26 활성 완료** (gh api 로 적용, settings 동기화).
 
+> **2026-04-27 변경**: develop 브랜치 폐지로 develop 관련 protection 규칙 삭제.
+
 ### 2.1 `main` 브랜치 (활성, 2026-04-26)
 
 - [x] Require a pull request before merging
@@ -61,43 +61,24 @@ hotfix/v{x.y.z+1}-{slug} (main 에서 분기, production 긴급 수정)
 - [x] Allow deletions: **off**
 - [ ] Include administrators: **off** (긴급 hotfix 우회 허용 — v0.1.0 release 후 on 재검토)
 
-### 2.2 `release/*` 브랜치 (wildcard, 미설정)
-
-- [ ] 활성 release branch 부재로 미설정. 첫 `release/v0.1.0` 분기 시점에 활성:
-  - Required approvals: 1
-  - Required status checks: §2.1 와 동일 7 contexts
-  - Allow deletions: **on** (release 완료 후 정리)
-  - Allow force pushes: **off**
-
-### 2.3 `develop` 브랜치 (활성, 2026-04-26)
-
-- [x] Require a pull request before merging
-  - Required approvals: **0** (single-developer self-merge 허용)
-  - Dismiss stale approvals: on
-- [x] Require status checks to pass — strict
-  - Required contexts: §2.1 와 동일 7 contexts
-- [x] Allow force pushes: **off**
-- [x] Allow deletions: **off**
-- [ ] Include administrators: **off** (긴급 직접 commit 허용 — config chore 등)
-
-### 2.4 Auto-merge 운영
+### 2.2 Auto-merge 운영
 
 `modu-ai/moai-studio` 의 repo 설정 (2026-04-26 활성):
 
 - `allow_auto_merge: true` — PR 에서 auto-merge 토글 가능
 - `delete_branch_on_merge: true` — 머지 후 feature 브랜치 자동 삭제
-- `allow_squash_merge: true` (feature → develop)
-- `allow_merge_commit: true` (release/hotfix → main, develop → release)
+- `allow_squash_merge: true` (feature → main)
+- `allow_merge_commit: true` (hotfix → main)
 - `allow_rebase_merge: false` (사용 안 함)
 
 **Auto-merge 사용 패턴:**
 
 ```bash
 # PR 생성 직후 auto-merge 활성 (squash)
-gh pr create --base develop --title "..." --body "..."
+gh pr create --base main --title "..." --body "..."
 gh pr merge --auto --squash <PR#>
 
-# release / hotfix → main 은 merge commit
+# hotfix → main 은 merge commit
 gh pr merge --auto --merge <PR#>
 ```
 
@@ -108,8 +89,6 @@ Auto-merge 동작:
 
 설정 완료:
 - [x] main: 활성 2026-04-26
-- [ ] release/*: 미설정 (v0.1.0 분기 시 활성)
-- [x] develop: 활성 2026-04-26
 - [x] auto-merge / delete-branch-on-merge: 활성 2026-04-26
 
 ---
@@ -173,12 +152,8 @@ Issue 및 PR 은 다음 3개 축에서 **각 1개 이상** 라벨을 가진다. 
 
 | 소스 | 대상 | 머지 방식 | 비고 |
 |------|------|----------|------|
-| `feature/*` | `develop` | **Squash merge** | PR 제목 = squash commit subject. SPEC 단위 1개 커밋으로 축약. Scope 명시. |
-| `develop` | `release/v{x.y.z}` | **Merge commit (--no-ff)** | 통합 시점 보존. `merge(release): develop → release/v{x.y.z}` |
-| `release/*` | `main` | **Merge commit (--no-ff)** + tag | `merge(release): v{x.y.z}` + `git tag v{x.y.z}` |
-| `main` ↔ `develop` | 양방향 back-merge | **Merge commit (--no-ff)** | release/hotfix 완료 시 `develop` 로 동기화 |
+| `feature/*` | `main` | **Squash merge** | PR 제목 = squash commit subject. SPEC 단위 1개 커밋으로 축약. Scope 명시. |
 | `hotfix/*` | `main` | **Merge commit (--no-ff)** + tag | `merge(hotfix): v{x.y.z}` + tag |
-| `hotfix/*` | `develop` (back-merge) | **Merge commit (--no-ff)** | `main` 머지 직후 실행 |
 
 ### 4.1 Squash Commit 메시지 규칙 (feature → develop)
 
@@ -214,10 +189,10 @@ merge(<release|hotfix>): <source> → <target> [v{x.y.z}]
 
 ### 5.1 동작 원리
 
-1. `develop` 또는 `release/*` 에 PR 머지 시 Release Drafter 가 실행
+1. `main` 에 PR 머지 시 Release Drafter 가 실행
 2. PR 라벨 (`type/*`, `release/*`) 을 읽어 카테고리 분류
 3. `v{next}` draft release 에 항목 누적
-4. 릴리스 담당자가 `release/*` → `main` 머지 직후 draft 를 publish
+4. 릴리스 담당자가 tag 생성 후 draft 를 publish
 
 ### 5.2 카테고리 매핑 (release-drafter.yml)
 
@@ -244,37 +219,23 @@ merge(<release|hotfix>): <source> → <target> [v{x.y.z}]
 
 ### 6.1 Feature 작업 착수 (SPEC-XXX 구현)
 
-1. `git checkout develop && git pull`
+1. `git checkout main && git pull`
 2. `git checkout -b feature/SPEC-XXX-short-slug`
 3. `/moai run SPEC-XXX` 로 TDD 사이클 진행 (현행)
 4. 로컬 커밋 누적 (auto_commit=true per `.moai/config/sections/git-strategy.yaml`)
 5. 구현 완료 시: `git push origin feature/SPEC-XXX-short-slug`
-6. GitHub UI 에서 PR 생성 → base: `develop`
+6. GitHub UI 에서 PR 생성 → base: `main`
 7. PR 에 **type/ + priority/ + area/** 3축 라벨 부착
 8. CI GREEN + 1 review → **Squash merge**
 9. 머지 후 feature 브랜치 삭제 (GitHub 자동 삭제 활성화 권장)
 
-### 6.2 Release 준비 (정식 v0.1.0 등)
-
-1. `develop` 에서 모든 target feature 통합 확인
-2. `git checkout -b release/v0.1.0` (from `develop`)
-3. CHANGELOG 검토 (Release Drafter draft)
-4. 최종 bug fix 만 `release/v0.1.0` 에 커밋 (feature 금지)
-5. QA PASS 확인 → PR `release/v0.1.0` → `main`
-6. **Merge commit** + `git tag v0.1.0 && git push origin v0.1.0`
-7. Release Drafter draft publish
-8. Back-merge: PR `main` → `develop` (**Merge commit**)
-9. `release/v0.1.0` 브랜치 삭제
-
-### 6.3 Hotfix (production 긴급)
+### 6.2 Hotfix (production 긴급)
 
 1. `git checkout main && git pull`
 2. `git checkout -b hotfix/v0.1.1-{slug}`
 3. 최소 수정 + reproduction test 추가 (per CLAUDE.md §7 Rule 4)
 4. Push + PR `hotfix/*` → `main` (**Merge commit** + tag)
-5. Back-merge PR `main` → `develop` (**Merge commit**)
-6. `release/*` 활성 시 그쪽에도 back-merge
-7. `hotfix/*` 브랜치 삭제
+5. `hotfix/*` 브랜치 삭제
 
 ---
 
@@ -282,7 +243,7 @@ merge(<release|hotfix>): <source> → <target> [v{x.y.z}]
 
 ### 7.1 `manager-git` subagent 위임 시 주입 컨텍스트
 
-- Default target branch: `develop` (main 이 아님)
+- Default target branch: `main`
 - Feature 브랜치 생성 시 prefix: `feature/` (단, `SPEC-XXX` 연계 시 `feature/SPEC-XXX-slug`)
 - `git-strategy.manual` 유지: auto_commit=true, auto_push=false, auto_pr=false
 - Push 는 사용자 명시적 지시 시에만
@@ -290,39 +251,11 @@ merge(<release|hotfix>): <source> → <target> [v{x.y.z}]
 ### 7.2 `/moai sync` Subcommand 개정 힌트
 
 Phase 3 PR 생성 시:
-- base branch: `develop` (main 대신)
+- base branch: `main`
 - PR 라벨 추천 (type/area 필수, priority 선택)
-- Auto-merge 활성: PR 생성 직후 `gh pr merge --auto --squash <PR#>` 호출 권장 (§2.4)
+- Auto-merge 활성: PR 생성 직후 `gh pr merge --auto --squash <PR#>` 호출 권장 (§2.2)
 - Required status checks (§2.1 의 7 contexts) PASS 시 자동 머지
 - conflict 또는 별개 이슈 fail 시 auto-merge 자동 해제 — 수동 개입
-
-### 7.3 SPEC-V3-003 현재 상태 (2026-04-24 기준)
-
-- 활성 feature 브랜치: `feat/v3-scaffold` (legacy 이름 유지)
-- `develop` 에 이미 머지됨 (`f9e7d4b` merge commit)
-- MS-2 작업 시 선택:
-  - (A) `feat/v3-scaffold` 그대로 사용 + MS-2 완료 후 develop squash merge
-  - (B) `feature/SPEC-V3-003-ms2` 신규 분기 (develop 에서) + MS-2 완료 후 develop squash merge
-- 권장: (B) — 향후 정식 명명 컨벤션 준수
-
----
-
-## 8. Version 1차 확정 전 (v0.1.0 release까지) 임시 규칙
-
-> **2026-04-26 update**: PUBLIC visibility 전환은 GHA billing 차단 회피 + free tier 활용을 위해 v0.1.0 이전에 선제 완료됨 (모두 `gh repo edit ... --visibility public` 으로 처리). 본 §8 의 다른 항목 (release/v0.1.0 분기, main v0.1.0 tag, Release Drafter publish) 은 v0.1.0 시점까지 유효.
->
-> 또한 `paths-ignore` 기반 `ci-required-stubs.yml` workflow 가 추가되어 doc-only PR 도 7 required contexts 를 자동 SUCCESS 로 보고 → admin override 없이 auto-merge 가능.
-
-현재는 v0.0.x pre-release 상태이므로:
-- `main` 은 v0.1.0 tag 까지 안정 release 만 포함 (현재는 PR #38 + d4d8fd1 release-drafter bootstrap 머지된 상태)
-- `release/v0.1.0` 분기 전까지는 `develop` 이 사실상 integration = stable
-- CHANGELOG 는 Release Drafter draft 로만 누적 (publish 안 함)
-
-v0.1.0 릴리스 시점에:
-- 본 문서 §8 전체 삭제
-- §2 Branch protection rule 전원 활성 (`enforce_admins: on` 포함 검토)
-- `main` 에 v0.1.0 tag 부착
-- public visibility 는 이미 완료 — 추가 조치 없음
 
 ---
 
@@ -376,22 +309,20 @@ v0.1.0 릴리스 시점에:
 
 | 상황 | 대응 |
 |------|------|
-| feature 브랜치가 develop 에서 오래 방치 → merge conflict 우려 | `git rebase develop` 또는 develop merge 로 최신화. 주기적 sync 권장. |
-| hotfix back-merge 누락 → develop 에 regression | PR 자동화: hotfix 머지 후 즉시 back-merge PR 자동 열기 (Release Drafter 외 별도 workflow 향후 도입). |
+| feature 브랜치가 main 에서 오래 방치 → merge conflict 우려 | `git rebase main` 또는 main merge 로 최신화. 주기적 sync 권장. |
 | Release Drafter 가 라벨 없는 PR 을 미분류로 표시 | PR 작성자는 머지 전 3축 라벨 부착 필수. 미부착 PR 은 review 에서 reject. |
-| ~~Release Drafter action 자체가 "Invalid config file" 로 실패~~ | **2026-04-26 해소**: PR #38 + d4d8fd1 main commit 으로 main 에 release-drafter.yml 반영. PUBLIC 전환 (2026-04-26) 후 Release Drafter 정상 동작 (PR #45 머지 시점에 SUCCESS 확인). |
 | 실수로 main 에 직접 push | Branch protection rule 활성화로 차단됨. 우회 시 즉시 revert + hotfix 브랜치로 이관. |
 | 한국어 주석이 신규 코드에 들어감 | §9.1 위반. 머지 전 영어로 수정. agent 가 작성한 경우 위임 프롬프트에 §9.5 라인 누락 → 다음 위임에 추가. |
-| ~~GitHub Actions billing 차단~~ | **2026-04-26 해소**: PUBLIC 전환으로 standard runner GHA 무료 (org-level billing 영향 없음). private 환경 복귀 시 spending limit 재상향 필요. |
 | Doc-only PR (README, .moai/specs/, LICENSE) auto-merge 차단 | **해소**: `.github/workflows/ci-required-stubs.yml` (2026-04-26 추가) 가 7 required contexts 를 stub 으로 SUCCESS 보고. doc-only PR 도 추가 조치 없이 auto-merge 가능. |
 
 ---
 
-Version: 1.3.0
-Last Updated: 2026-04-26
+Version: 2.0.0
+Last Updated: 2026-04-27
 Scope: github.com/modu-ai/moai-studio (PUBLIC, transferred from GoosLab/moai-studio 2026-04-26)
 
 Changelog:
+- 2.0.0 (2026-04-27): **GitHub Flow 전환**. Enhanced GitHub Flow 폐지, develop 브랜치 삭제. feature → main 직접 머지. 모든 develop 관련 섹션 제거 (§1, §2, §4, §5, §6, §7, §10).
 - 1.3.0 (2026-04-26): PUBLIC visibility 전환 완료 (v0.1.0 이전 선제 처리). §8 에 PUBLIC 전환 메모 추가. §10 troubleshooting 에 doc-only PR auto-merge 해소 (`ci-required-stubs.yml`) + Release Drafter 정상 동작 + GHA billing 해소 항목 갱신. CLAUDE.local.md 자체는 PUBLIC repo 에 commit 되어 외부 노출 (정책 텍스트만, 민감 정보 0).
 - 1.2.0 (2026-04-26): §2 branch protection 활성 (main + develop, 7 required contexts), §2.4 Auto-merge 운영 가이드 신설. §7.2 sync subcommand 에 auto-merge 패턴 주입. Repo transfer (GoosLab → modu-ai).
 - 1.1.0 (2026-04-26): §9 Code Comments Policy 신설 (HARD: 모든 코드 주석 영어). Troubleshooting → §10 이동. CI billing / Release Drafter config troubleshooting 항목 추가.
