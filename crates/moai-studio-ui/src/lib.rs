@@ -307,8 +307,10 @@ impl RootView {
 
     /// Toggle CmdPalette: open with fresh CmdPalette instance, or dismiss if same variant visible.
     ///
-    /// On open: creates a new CmdPalette with the default mock file index and stores it in
-    /// `self.cmd_palette`. On dismiss: resets query and cmd_palette.
+    /// On open: if an active workspace with a valid path exists, scans that directory
+    /// for files via `CmdPalette::from_workspace_dir`; otherwise falls back to the
+    /// default mock file index. Stores the instance in `self.cmd_palette`.
+    /// On dismiss: resets query and cmd_palette.
     fn toggle_cmd_palette(&mut self) {
         if self.palette.active_variant == Some(palette::PaletteVariant::CmdPalette) {
             // Already open — dismiss (toggle semantics per AC-PL-14 Q2 default).
@@ -317,7 +319,19 @@ impl RootView {
         } else {
             // Open (also replaces other variants due to mutual exclusion).
             self.palette.open(palette::PaletteVariant::CmdPalette);
-            self.cmd_palette = Some(palette::variants::CmdPalette::new());
+            // Use workspace path for real file scanning (F-1 wiring).
+            let cmd_palette = self
+                .active()
+                .and_then(|w| {
+                    let p = &w.project_path;
+                    if p.is_dir() {
+                        Some(palette::variants::CmdPalette::from_workspace_dir(p))
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_default();
+            self.cmd_palette = Some(cmd_palette);
             self.palette_query = String::new();
         }
     }
