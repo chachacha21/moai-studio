@@ -1,0 +1,82 @@
+[package]
+name = "moai-studio-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "MoAI Studio v3 — GPUI 컴포넌트 라이브러리 (Sidebar, Toolbar, StatusBar, Panes)"
+
+[dependencies]
+tracing = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+# SPEC-V3-013 MS-3: UserSettings 영속화 경로 (platform-appropriate config dir)
+dirs = { workspace = true }
+
+# Phase 1.1 (SPEC-V3-001 RG-V3-2): GPUI 의존성 추가
+# crates.io 0.2.2 는 2025 년 배포. git main 은 core-foundation exact pin 충돌 발생.
+# 안정 경로: 0.2.2 로 시작 → Phase 7+ 에서 Zed GPUI 최신으로 마이그레이션.
+gpui = "0.2"
+
+# Phase 1.6 (SPEC-V3-001 RG-V3-2): Sidebar 에 워크스페이스 리스트 렌더.
+moai-studio-workspace = { path = "../moai-studio-workspace" }
+
+# Phase 2 (SPEC-V3-002 T4): TerminalSurface — terminal crate 타입 소비.
+# T3 완료 후 PtyEvent + RenderSnapshot re-export 가 활성화된다.
+moai-studio-terminal = { path = "../moai-studio-terminal" }
+
+# Phase 2 (SPEC-V3-002 T4/T5): arboard 3.0 로컬 클립보드
+# (macOS NSPasteboard / Linux X11·Wayland, SPEC-V3-002 RG-V3-002-4).
+arboard = "3.0"
+
+# SPEC-V3-010 MS-1: agent dashboard domain crate
+moai-studio-agent = { path = "../moai-studio-agent" }
+
+# SPEC-V3-009 MS-1: SPEC 파싱 + AC 상태 추적
+moai-studio-spec = { path = "../moai-studio-spec" }
+
+# SPEC-V3-009 MS-3: subprocess stream-json decode (REQ-SU-041)
+moai-stream-json = { path = "../moai-stream-json" }
+
+# SPEC-V3-006 MS-1: Markdown 파싱 (RG-MV-1, pulldown-cmark)
+pulldown-cmark = "0.13"
+
+# SPEC-V3-006 MS-2 T10: tree-sitter syntax highlight (RG-MV-3)
+# USER-DECISION OD-MV2: Rust / Go / Python / TypeScript 4개 언어 우선 지원
+tree-sitter = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-go = "0.25"
+tree-sitter-python = "0.25"
+tree-sitter-typescript = "0.23"
+
+# SPEC-V3-006 MS-3a: @MX tag scan 및 Find/Replace 정규식 (RG-MV-5)
+regex = "1"
+
+# SPEC-V3-005 MS-3: git status 통합 (RG-FE-3, AC-FE-8)
+moai-git = { path = "../moai-git" }
+
+# SPEC-V3-005 MS-3: OS 휴지통 삭제 (USER-DECISION-C=(a), REQ-FE-034)
+trash = "5"
+
+[dev-dependencies]
+# T11 (SPEC-V3-003 MS-2 AC-P-19): tab_switch 50-cycle bench.
+# criterion 0.5 는 harness=false 로 동작하며 --test 모드로 smoke-run 가능.
+criterion = "0.5"
+
+# V3-005/006 wiring integration test: 실제 파일 I/O 검증용 tempfile.
+tempfile = "3"
+
+# T1 (SPEC-V3-004 MS-1 AC-R-6): gpui test-support feature 채택.
+# USER-DECISION resolved: option (a) ADOPT. TestAppContext 기반 render integration test 활성화.
+# AC-P-5 carry-over (SPEC-V3-003) 해소.
+gpui = { version = "0.2", features = ["test-support"] }
+
+[[example]]
+name = "ghostty-spike"
+path = "examples/ghostty_spike.rs"
+
+[[bench]]
+name = "tab_switch"
+harness = false

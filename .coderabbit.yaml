@@ -1,0 +1,105 @@
+# CodeRabbit configuration — moai-studio
+# Schema: https://docs.coderabbit.ai/reference/configuration
+
+# Language for reviews and tone
+language: ko-KR
+tone_instructions: |
+  Respond in Korean for review comments.
+  Code suggestions and inline diff hunks remain in English.
+  Be concise; prefer concrete fixes over generic remarks.
+  Focus on TRUST 5 (Tested / Readable / Unified / Secured / Trackable) per CLAUDE.md.
+
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  # Auto review on PRs targeting non-default branches.
+  # GoosLab/moai-studio uses Enhanced GitHub Flow:
+  #   main (default, releases only) <- release/* <- develop <- feature/*
+  # CodeRabbit free tier defaults to default branch only; we expand here.
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+      - 'release/**'
+      - 'hotfix/**'
+
+  # Path-level filters: skip generated/vendored content.
+  path_filters:
+    - '!target/**'
+    - '!**/Cargo.lock'
+    - '!**/*.lock'
+    - '!archive/**'
+    - '!.zig-cache/**'
+    - '!**/*.svg'
+    - '!**/*.png'
+    - '!**/*.pdf'
+
+  # Path-specific instructions per area (CLAUDE.local.md §3.3 area map).
+  path_instructions:
+    - path: 'crates/moai-studio-terminal/**'
+      instructions: |
+        terminal core (RG-P-7 carry from V3-002/003) — 변경 시 정당화 강제.
+        모든 SPEC 의 N6 carry 가 영향. AC-AD-12 / AC-FE-* 등 git diff = 0 검증과 충돌 여부 확인.
+    - path: 'crates/moai-studio-ui/src/panes/**'
+      instructions: |
+        panes core (RG-P-7 carry) — 변경 시 SPEC reference 필수. 동시성 및 focus tracking 회귀 우선 검토.
+    - path: 'crates/moai-studio-ui/src/tabs/**'
+      instructions: |
+        tabs core (RG-P-7 carry) — 변경 시 tab_switch bench 영향 (SPEC-V3-003 AC-P-19) 확인.
+    - path: 'crates/moai-studio-agent/**'
+      instructions: |
+        SPEC-V3-010 Agent Progress Dashboard 도메인. AgentRunId single source of truth, USER-DECISION-AD-A/B/C/D default 준수 여부 확인.
+    - path: '.moai/specs/**'
+      instructions: |
+        SPEC 문서 — EARS 형식 / RG-XXX / AC-XXX / NFR / USER-DECISION 게이트 / N (비목표) 라벨링 일관성 검토. 한국어 유지.
+    - path: '**/*.rs'
+      instructions: |
+        Rust 1.95+ stable 기준. clippy collapsible_match / collapsible_if / collapsible_else_if 신규 lint 검출 시 즉시 fix.
+        @MX 태그 (@MX:NOTE/WARN/ANCHOR/TODO) 의 mandatory fields (REASON for WARN/ANCHOR) 확인.
+        code_comments: en (CLAUDE.local.md §9). 신규/수정 코드 주석은 영어.
+
+  # Tools — enable established static analyzers.
+  tools:
+    ast-grep:
+      essential_rules: true
+      packages:
+        - ast-grep-essentials
+    github-checks:
+      enabled: true
+      timeout_ms: 90000
+    languagetool:
+      enabled: true
+      enabled_only: false
+      level: default
+    markdownlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    actionlint:
+      enabled: true
+    ruff:
+      enabled: false
+    shellcheck:
+      enabled: true
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: auto
+  issues:
+    scope: auto
+  pull_requests:
+    scope: auto

@@ -1,0 +1,75 @@
+[package]
+name = "moai-studio-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "MoAI Studio v3 — cross-platform native terminal multiplexer (binary entry point)"
+
+[[bin]]
+name = "moai-studio"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = { workspace = true }
+
+# v3 내부 crate (스캐폴드 단계, 추후 확장)
+moai-studio-ui = { path = "../moai-studio-ui" }
+moai-studio-terminal = { path = "../moai-studio-terminal" }
+moai-studio-workspace = { path = "../moai-studio-workspace" }
+moai-studio-plugin-api = { path = "../moai-studio-plugin-api" }
+
+# TODO Phase 1 (SPEC-V3-001 RG-V3-2): GPUI 의존성 추가
+# gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
+
+[features]
+default = ["moai-adk"]
+# moai-adk 번들 플러그인 (cargo feature 기반 인프로세스 정적 플러그인)
+moai-adk = ["dep:moai-studio-plugin-moai-adk"]
+
+[dependencies.moai-studio-plugin-moai-adk]
+path = "../moai-studio-plugin-moai-adk"
+optional = true
+
+# ============================================================
+# SPEC-V3-011 MS-1: Cross-platform packaging metadata
+# ============================================================
+
+# cargo-bundle (macOS .app)
+# HARD: icon uses PNG since icon.icns is deferred to MS-2 (requires Apple tooling)
+[package.metadata.bundle]
+name = "moai-studio"
+identifier = "kr.ai.mo.moai-studio"
+icon = ["assets/icons/256x256/moai-studio.png"]
+copyright = "Copyright © 2026 MoAI"
+short_description = "GUI shell for MoAI-ADK"
+osx_minimum_system_version = "14.0"
+
+# cargo-deb (Linux .deb)
+# Asset paths are resolved by cargo-deb relative to the workspace root when
+# invoked with --target. Binary path uses workspace target directory.
+[package.metadata.deb]
+maintainer = "MoAI <email@mo.ai.kr>"
+copyright = "2026, MoAI"
+extended-description = "moai-studio is the GUI shell for MoAI-ADK, providing a cross-platform native terminal multiplexer with AI-driven development workflow integration."
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/x86_64-unknown-linux-gnu/release/moai-studio", "usr/bin/", "755"],
+    ["assets/moai-studio.desktop", "usr/share/applications/", "644"],
+    ["assets/icons/256x256/moai-studio.png", "usr/share/icons/hicolor/256x256/apps/", "644"],
+]
+
+# cargo-wix (Windows .msi)
+# GUIDs are pre-generated stable IDs (do not regenerate — breaks upgrade chain)
+# upgrade-guid: 66AF0EF7-3C7D-4225-9A81-E1A54574F7AC
+# path-guid:    65B7D893-8E3C-478F-8E0E-0F7A27244F8B
+[package.metadata.wix]
+upgrade-guid = "66AF0EF7-3C7D-4225-9A81-E1A54574F7AC"
+path-guid = "65B7D893-8E3C-478F-8E0E-0F7A27244F8B"
+license = false
+eula = false
