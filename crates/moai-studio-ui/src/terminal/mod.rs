@@ -9,7 +9,10 @@ pub mod clipboard;
 pub mod input;
 
 use crate::design::tokens::{self as tok, ide_accent};
-use gpui::{Context, EventEmitter, IntoElement, Keystroke, ParentElement, Render, Styled, Window, div, px, rgb};
+use gpui::{
+    Context, EventEmitter, IntoElement, Keystroke, ParentElement, Render, Styled, Window, div, px,
+    rgb,
+};
 use moai_studio_terminal::link::ClickAction;
 use std::path::PathBuf;
 
@@ -78,7 +81,11 @@ impl Selection {
 /// RootView subscribes to these events to dispatch actions.
 pub enum TerminalClickEvent {
     /// Open a file in the code viewer
-    OpenFile { path: PathBuf, line: Option<u32>, col: Option<u32> },
+    OpenFile {
+        path: PathBuf,
+        line: Option<u32>,
+        col: Option<u32>,
+    },
     /// Open a URL in the browser
     OpenUrl(String),
     /// Open a SPEC panel for the given spec_id
@@ -291,11 +298,7 @@ impl TerminalSurface {
                         "ClickAction::OpenCodeViewer"
                     );
                     // Emit event for RootView to handle
-                    cx.emit(TerminalClickEvent::OpenFile {
-                        path,
-                        line,
-                        col,
-                    });
+                    cx.emit(TerminalClickEvent::OpenFile { path, line, col });
                 }
                 ClickAction::OpenUrl(moai_studio_terminal::link::OpenUrl { url }) => {
                     // AC-LK-5: open URL in default browser

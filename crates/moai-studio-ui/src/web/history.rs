@@ -107,7 +107,9 @@ impl NavigationHistory {
     /// Never (invariant: entries always has at least 1 element)
     pub fn current(&self) -> &NavigationEntry {
         // SAFETY: entries is never empty (invariant)
-        self.entries.get(self.cursor).expect("NavigationHistory invariant violated: entries is empty")
+        self.entries
+            .get(self.cursor)
+            .expect("NavigationHistory invariant violated: entries is empty")
     }
 
     /// Check if can go back

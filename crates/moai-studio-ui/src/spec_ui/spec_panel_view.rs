@@ -341,7 +341,10 @@ mod tests {
         let specs_dir = PathBuf::from("/nonexistent/.moai/specs");
         let panel = SpecPanelView::new(specs_dir);
 
-        assert!(panel.is_empty(), "Should be empty when directory doesn't exist");
+        assert!(
+            panel.is_empty(),
+            "Should be empty when directory doesn't exist"
+        );
         assert_eq!(panel.spec_names().len(), 0);
     }
 

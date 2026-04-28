@@ -678,7 +678,11 @@ impl RootView {
     /// This method sets up a GPUI EventEmitter subscription on TerminalSurface.
     /// When the terminal emits click events (file URLs, SPEC IDs), RootView
     /// delegates them to the appropriate handler.
-    pub fn wire_terminal_click_callback(&mut self, terminal: &Entity<terminal::TerminalSurface>, cx: &mut Context<Self>) {
+    pub fn wire_terminal_click_callback(
+        &mut self,
+        terminal: &Entity<terminal::TerminalSurface>,
+        cx: &mut Context<Self>,
+    ) {
         let _subscription = cx.subscribe(terminal, |this, _terminal, event: &TerminalClickEvent, cx| {
             match event {
                 TerminalClickEvent::OpenFile { path, line: _, col: _ } => {

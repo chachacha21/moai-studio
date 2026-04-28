@@ -117,21 +117,30 @@ mod tests {
     fn test_validate_javascript_scheme_blocked() {
         let result = validate_url("javascript:alert('XSS')");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), UrlValidationError::UnsafeScheme("javascript:".to_string()));
+        assert_eq!(
+            result.unwrap_err(),
+            UrlValidationError::UnsafeScheme("javascript:".to_string())
+        );
     }
 
     #[test]
     fn test_validate_data_scheme_blocked() {
         let result = validate_url("data:text/html,<script>alert('XSS')</script>");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), UrlValidationError::UnsafeScheme("data:".to_string()));
+        assert_eq!(
+            result.unwrap_err(),
+            UrlValidationError::UnsafeScheme("data:".to_string())
+        );
     }
 
     #[test]
     fn test_validate_vbscript_scheme_blocked() {
         let result = validate_url("vbscript:msgbox('XSS')");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), UrlValidationError::UnsafeScheme("vbscript:".to_string()));
+        assert_eq!(
+            result.unwrap_err(),
+            UrlValidationError::UnsafeScheme("vbscript:".to_string())
+        );
     }
 
     #[test]

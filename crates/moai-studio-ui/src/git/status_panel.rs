@@ -47,9 +47,7 @@ impl Default for GitStatusPanel {
 impl GitStatusPanel {
     /// Create a new GitStatusPanel with empty state.
     pub fn new() -> Self {
-        Self {
-            files: Vec::new(),
-        }
+        Self { files: Vec::new() }
     }
 
     /// Set the file list. Typically called after fetching from GitRepo::status_map().

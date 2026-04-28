@@ -8,11 +8,11 @@
 // MS-2: NavigationHistory integration, URL validation, DevTools support
 
 use crate::design::tokens as tok;
+use gpui::prelude::FluentBuilder;
 use gpui::{
     Context, Div, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window, div, px,
     rgb,
 };
-use gpui::prelude::FluentBuilder;
 
 use super::history::NavigationHistory;
 use super::url::validate_url;
@@ -180,17 +180,9 @@ impl Render for WebViewSurface {
                     .border_b_1()
                     .border_color(rgb(tok::BORDER_SUBTLE))
                     // MS-2: Back button (enabled/disabled based on can_go_back)
-                    .child(nav_button(
-                        "←",
-                        "Back",
-                        self.history.can_go_back(),
-                    ))
+                    .child(nav_button("←", "Back", self.history.can_go_back()))
                     // MS-2: Forward button (enabled/disabled based on can_go_forward)
-                    .child(nav_button(
-                        "→",
-                        "Forward",
-                        self.history.can_go_forward(),
-                    ))
+                    .child(nav_button("→", "Forward", self.history.can_go_forward()))
                     // Reload button
                     .child(nav_button("⟳", "Reload", true))
                     // URL text input placeholder
@@ -246,11 +238,7 @@ impl Render for WebViewSurface {
                     )
                     // MS-2: Show error in red if present
                     .when_some(self.last_error.clone(), |this, error| {
-                        this.child(
-                            div()
-                                .text_color(rgb(tok::semantic::DANGER))
-                                .child(error),
-                        )
+                        this.child(div().text_color(rgb(tok::semantic::DANGER)).child(error))
                     })
                     // MS-2: DevTools indicator
                     .when(self.devtools_open, |this| {
