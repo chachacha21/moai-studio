@@ -2,8 +2,8 @@
 
 **Started**: 2026-04-25
 **Branch**: feature/SPEC-V3-005-file-explorer (shared branch with V3-006/DIST-001)
-**SPEC status**: ms2-ms3-committed
-**Completion date**: N/A (commit_composer.rs, status_panel.rs still pending)
+**SPEC status**: complete
+**Completion date**: 2026-04-28
 
 ## Planning Phase
 
@@ -19,6 +19,8 @@
 - [x] MS-1: moai-git crate API expansion (status, diff, commit, branch, log, stash modules) — PR #60
 - [x] MS-2: Diff Viewer + Branch Switcher UI — committed `02d8ac9`
 - [x] MS-3: Log Graph + Merge Conflict Resolver + Stash Management UI — committed `02d8ac9`
+
+All 8 GPUI Entity files committed: branch_switcher.rs, commit_composer.rs, diff_viewer.rs, log_view.rs, merge_resolver.rs, mod.rs, stash_panel.rs, status_panel.rs.
 
 ## Key Files Changed
 
@@ -37,24 +39,11 @@
 
 ### Not Yet Created (MS-2/MS-3 scope)
 
-- `crates/moai-studio-ui/src/git/status_panel.rs`
-- `crates/moai-studio-ui/src/git/commit_composer.rs`
+All files now committed (see above).
 
-### Uncommitted Work (MS-2/MS-3 — written but not committed)
+### Uncommitted Work
 
-The following files exist on disk but are not tracked by git. They represent MS-2/MS-3 UI implementation that was written in a prior session but not committed or compiled.
-
-- `crates/moai-studio-ui/src/git/mod.rs` (20 LOC) — Module registration + re-exports
-- `crates/moai-studio-ui/src/git/branch_switcher.rs` (202 LOC) — GitBranchSwitcher entity (REQ-G-030~035)
-- `crates/moai-studio-ui/src/git/diff_viewer.rs` (176 LOC) — GitDiffViewer entity (REQ-G-010~015)
-- `crates/moai-studio-ui/src/git/log_view.rs` (237 LOC) — GitLogView entity (REQ-G-040~044)
-- `crates/moai-studio-ui/src/git/merge_resolver.rs` (253 LOC) — GitMergeResolver entity (REQ-G-050~056)
-- `crates/moai-studio-ui/src/git/stash_panel.rs` (176 LOC) — GitStashPanel entity (REQ-G-060~064)
-- `crates/moai-studio-ui/tests/integration_git.rs` (532 LOC) — Integration tests
-- `crates/moai-studio-ui/src/lib.rs` (+251 insertions) — Git module wiring + RootView integration
-- Total: ~1064 LOC UI + 532 LOC tests = 1596 LOC uncommitted
-
-**Action needed**: Review uncommitted files, run `cargo check`, resolve compilation issues, then commit.
+None — all files tracked in git as of `7aee439` and `02d8ac9`.
 
 ## Acceptance Criteria Status
 

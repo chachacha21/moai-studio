@@ -12,15 +12,15 @@
 | Metric | Count |
 |--------|-------|
 | Total features in design v3 | 45 |
-| Implemented (DONE) | 2 |
-| Partial implementation | 29 |
-| Missing (NONE) | 14 |
+| Implemented (DONE) | 4 |
+| Partial implementation | 30 |
+| Missing (NONE) | 11 |
 | **v0.1.2 demo-visible candidates** | **5** |
 
 **Status by Tier:**
 - Tier A (Terminal Core): 2 DONE, 5 PARTIAL, 0 NONE
-- Tier B (Smart Link): 0 DONE, 1 PARTIAL, 6 NONE  
-- Tier C (Surfaces): 1 DONE, 5 PARTIAL, 3 NONE
+- Tier B (Smart Link): 2 DONE, 1 PARTIAL, 4 NONE
+- Tier C (Surfaces): 1 DONE, 6 PARTIAL, 2 NONE
 - Tier D (Workspace): 1 DONE, 2 PARTIAL, 3 NONE
 - Tier E (moai-adk): 0 DONE, 5 PARTIAL, 3 NONE
 - Tier F (UX): 1 DONE, 4 PARTIAL, 1 NONE
@@ -40,8 +40,8 @@
 | **A-6** | Block-based output (Warp model) | High | — | NONE | LOW | NO | (no implementation) |
 | **A-7** | Unix socket IPC + named pipe | High | SPEC-V3-002 | PARTIAL | LOW | NO | moai-studio-terminal/src/pty/unix.rs |
 | **B-1** | OSC 8 hyperlinks render + click | Critical | SPEC-V3-002 | PARTIAL | MEDIUM | YES | moai-studio-terminal/src/vt.rs (libghostty OSC parsing) |
-| **B-2** | Regex file path detection (path:line:col) | Critical | SPEC-V3-LINK-001 | PARTIAL | HIGH | YES | crates/moai-studio-terminal/src/link.rs detect_links() — detection done, UI click wiring deferred |
-| **B-3** | URL auto-detect + highlight | Critical | SPEC-V3-LINK-001 | PARTIAL | HIGH | YES | crates/moai-studio-terminal/src/link.rs detect_links() — detection done, UI click wiring deferred |
+| **B-2** | Regex file path detection (path:line:col) | Critical | SPEC-V3-LINK-001 | DONE | HIGH | YES | link.rs detect_links() + terminal/mod.rs on_mouse_down → handle_click → resolve_click → TerminalClickEvent |
+| **B-3** | URL auto-detect + highlight | Critical | SPEC-V3-LINK-001 | DONE | HIGH | YES | link.rs detect_links() + terminal/mod.rs on_mouse_down → handle_click → cx.open_url() |
 | **B-4** | SPEC-ID pattern detection | Critical | SPEC-V3-009 | NONE | MEDIUM | NO | (E-1 has SPEC parsing, not terminal parsing) |
 | **B-5** | @MX tag detection | High | SPEC-V3-009 | PARTIAL | MEDIUM | NO | moai-studio-ui/src/viewer/mx_gutter.rs |
 | **B-6** | Mermaid code block detection | Medium | SPEC-V3-005 | NONE | LOW | NO | (no implementation) |
@@ -49,7 +49,7 @@
 | **C-1** | Terminal Surface (basic rendering) | Critical | SPEC-V3-002 | DONE | HIGH | NO | moai-studio-ui/src/terminal/mod.rs:TerminalSurface (SPEC-V3-002 completed) |
 | **C-2** | Markdown Surface (EARS + KaTeX + Mermaid) | Critical | SPEC-V3-005 | PARTIAL | HIGH | YES | moai-studio-ui/src/viewer/markdown/, LeafKind::Markdown |
 | **C-3** | Code Viewer Surface (Monaco + LSP) | High | SPEC-V3-005/006 | PARTIAL | HIGH | YES | moai-studio-ui/src/viewer/code/, viewer/lsp.rs |
-| **C-4** | Browser Surface (WebView + DevTools) | Critical | SPEC-V3-007 | NONE | HIGH | YES | (wry integration pending SPEC-V3-007) |
+| **C-4** | Browser Surface (WebView + DevTools) | Critical | SPEC-V3-007 | PARTIAL | HIGH | YES | wry_backend.rs + surface.rs + history.rs + bridge.rs + url_detector.rs (MS 1-3 committed) |
 | **C-5** | Image Surface (zoom/pan/EXIF) | High | SPEC-V3-005 | NONE | MEDIUM | NO | (no implementation) |
 | **C-6** | JSON/CSV Surface (pretty display) | Medium | SPEC-V3-005 | NONE | MEDIUM | NO | (no implementation) |
 | **C-7** | Mermaid Renderer Surface | Medium | SPEC-V3-005 | NONE | MEDIUM | NO | (no implementation) |
