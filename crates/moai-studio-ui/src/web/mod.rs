@@ -29,10 +29,19 @@ pub trait WebViewBackend {
 }
 
 #[cfg(feature = "web")]
+pub mod history;
+
+#[cfg(feature = "web")]
 pub mod surface;
 
 #[cfg(feature = "web")]
+pub mod url;
+
+#[cfg(feature = "web")]
 pub mod wry_backend;
+
+#[cfg(feature = "web")]
+pub use history::NavigationHistory;
 
 #[cfg(feature = "web")]
 pub use surface::WebViewSurface;

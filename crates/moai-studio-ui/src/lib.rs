@@ -14,6 +14,8 @@
 //! - Empty state CTA 는 workspaces 가 비었을 때만 body 에 표시
 //! - TerminalSurface 가 Some 이면 content_area 는 빈 상태 대신 터미널을 렌더한다.
 
+use crate::terminal::TerminalClickEvent;
+
 pub mod agent;
 // SPEC-V0-1-2-MENUS-001 F-3: Toolbar 모듈
 pub mod toolbar;
@@ -86,6 +88,9 @@ actions!(
         // Help
         OpenDocumentation,
         OpenAbout,
+        // WebView DevTools (SPEC-V3-007 MS-2)
+        #[cfg(feature = "web")]
+        ToggleDevTools,
     ]
 );
 use moai_studio_workspace::{Workspace, WorkspacesStore};
@@ -665,6 +670,33 @@ impl RootView {
             this.handle_open_file(&open_ev, cx);
         });
         // Subscription 을 forget 하여 RootView 생존 기간 동안 활성 유지
+        _subscription.detach();
+    }
+
+    /// Subscribe to terminal click events and dispatch to appropriate handlers.
+    ///
+    /// This method sets up a GPUI EventEmitter subscription on TerminalSurface.
+    /// When the terminal emits click events (file URLs, SPEC IDs), RootView
+    /// delegates them to the appropriate handler.
+    pub fn wire_terminal_click_callback(&mut self, terminal: &Entity<terminal::TerminalSurface>, cx: &mut Context<Self>) {
+        let _subscription = cx.subscribe(terminal, |this, _terminal, event: &TerminalClickEvent, cx| {
+            match event {
+                TerminalClickEvent::OpenFile { path, line: _, col: _ } => {
+                    // Note: current OpenFileEvent doesn't support line/col, so they're ignored
+                    let ev = viewer::OpenFileEvent {
+                        path: path.clone(),
+                        surface_hint: None,
+                    };
+                    this.handle_open_file(&ev, cx);
+                }
+                TerminalClickEvent::OpenUrl(url) => {
+                    cx.open_url(url);
+                }
+                TerminalClickEvent::OpenSpec(spec_id) => {
+                    tracing::info!(spec_id = %spec_id, "Terminal emitted OpenSpec event");
+                }
+            }
+        });
         _subscription.detach();
     }
 
@@ -1620,6 +1652,11 @@ pub fn run_app(workspaces: Vec<Workspace>, storage_path: PathBuf) {
             gpui::KeyBinding::new("cmd-[", FocusPrevPane, None),
             gpui::KeyBinding::new("cmd-k", OpenCommandPalette, None),
             gpui::KeyBinding::new("cmd-shift-p", OpenSpecPanel, None),
+            // SPEC-V3-007 MS-2: WebView DevTools toggle (Cmd+Opt+I / Ctrl+Shift+I)
+            #[cfg(feature = "web")]
+            gpui::KeyBinding::new("cmd-alt-i", ToggleDevTools, None),
+            #[cfg(feature = "web")]
+            gpui::KeyBinding::new("ctrl-shift-i", ToggleDevTools, None),
         ]);
 
         cx.set_menus(vec![
