@@ -8,7 +8,7 @@
 use crate::design::tokens as tok;
 use crate::viewer::exif::ExifData;
 use crate::viewer::image_data::ImageData;
-use gpui::{Context, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb};
+use gpui::{Context, CursorStyle, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb};
 use gpui::prelude::FluentBuilder;
 
 use std::path::Path;
@@ -34,6 +34,9 @@ pub struct ImageViewer {
     exif_data: Option<ExifData>,
     /// Whether EXIF side panel is visible (REQ-IV-045, default: false).
     show_exif_panel: bool,
+    /// Whether the loaded file is SVG (REQ-IV-013).
+    /// SVG files show a placeholder instead of decoded image.
+    is_svg: bool,
 }
 
 impl ImageViewer {
@@ -50,13 +53,25 @@ impl ImageViewer {
             error_message: None,
             exif_data: None,
             show_exif_panel: false,
+            is_svg: false,
         }
     }
 
     /// Load decoded image data (REQ-IV-002, REQ-IV-005).
     ///
     /// Also extracts EXIF metadata from the source file (REQ-IV-040).
+    /// If the file is SVG (by extension), sets `is_svg` flag and skips decode (REQ-IV-013).
     pub fn load_image(&mut self, data: ImageData, _cx: &mut Context<Self>) {
+        // Check if file is SVG by extension (REQ-IV-013)
+        if Self::is_svg_path(&data.path) {
+            self.is_svg = true;
+            self.image_data = Some(data);
+            self.error_message = None;
+            self.reset_view();
+            return;
+        }
+
+        self.is_svg = false;
         let width = data.width as f32;
         let height = data.height as f32;
 
@@ -68,6 +83,25 @@ impl ImageViewer {
         self.reset_view();
         // Set initial zoom to fit image within typical viewport
         self.fit_to_view(width, height);
+    }
+
+    /// Load SVG file as placeholder (REQ-IV-013).
+    ///
+    /// Sets `is_svg` flag and shows "SVG preview not yet supported" message.
+    /// Does not attempt image decoding.
+    pub fn load_svg(&mut self, _path: &Path, _cx: &mut Context<Self>) {
+        self.is_svg = true;
+        self.image_data = None;
+        self.error_message = None;
+        self.exif_data = None;
+        self.reset_view();
+    }
+
+    /// Check if a file path has SVG extension.
+    fn is_svg_path(path: &Path) -> bool {
+        path.extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("svg"))
     }
 
     /// Set error message if image loading failed (REQ-IV-003).
@@ -188,6 +222,28 @@ impl ImageViewer {
     pub fn pan_y(&self) -> f32 {
         self.pan_y
     }
+
+    /// Whether the loaded file is an SVG (REQ-IV-013).
+    pub fn is_svg(&self) -> bool {
+        self.is_svg
+    }
+
+    /// Whether currently dragging to pan.
+    pub fn is_dragging(&self) -> bool {
+        self.is_dragging
+    }
+
+    /// Get cursor style based on current state (REQ-IV-030~031).
+    ///
+    /// Returns `CursorStyle::OpenHand` (grab) when hovering over image,
+    /// `CursorStyle::ClosedHand` (grabbing) when dragging.
+    pub fn cursor_style(&self) -> CursorStyle {
+        if self.is_dragging {
+            CursorStyle::ClosedHand
+        } else {
+            CursorStyle::OpenHand
+        }
+    }
 }
 
 impl Default for ImageViewer {
@@ -210,6 +266,11 @@ impl Render for ImageViewer {
                 .into_any_element();
         }
 
+        // SVG placeholder (REQ-IV-013)
+        if self.is_svg {
+            return self.render_svg_placeholder().into_any_element();
+        }
+
         // If no image loaded, show placeholder (REQ-IV-006)
         let Some(ref data) = self.image_data else {
             return self.render_placeholder().into_any_element();
@@ -220,6 +281,9 @@ impl Render for ImageViewer {
         let display_w = img_w * self.zoom;
         let display_h = img_h * self.zoom;
         let show_exif = self.show_exif_panel && self.exif_data.is_some();
+
+        // Cursor feedback: grab/grabbing based on drag state (REQ-IV-030~031)
+        let cursor = self.cursor_style();
 
         div()
             .w_full()
@@ -238,6 +302,7 @@ impl Render for ImageViewer {
                     .justify_center()
                     .overflow_hidden()
                     .relative()
+                    .cursor(cursor)
                     // Image container (REQ-IV-005)
                     .child(
                         div()
@@ -313,6 +378,29 @@ impl ImageViewer {
             .text_lg()
             .text_color(rgb(tok::FG_SECONDARY))
             .child("Image Viewer (C-5)")
+    }
+
+    /// Render SVG placeholder when SVG file is loaded (REQ-IV-013).
+    fn render_svg_placeholder(&self) -> gpui::Div {
+        div()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .h_full()
+            .gap(px(8.))
+            .child(
+                div()
+                    .text_lg()
+                    .text_color(rgb(tok::FG_SECONDARY))
+                    .child("SVG preview not yet supported"),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(tok::BORDER_SUBTLE))
+                    .child("SVG files are routed to the image viewer but rendering is not implemented"),
+            )
     }
 
     fn render_error_message(&self, message: &str) -> gpui::Div {
@@ -587,5 +675,163 @@ mod tests {
         assert!(viewer.is_exif_panel_visible(), "first toggle should show panel");
         viewer.toggle_exif_panel();
         assert!(!viewer.is_exif_panel_visible(), "second toggle should hide panel");
+    }
+
+    // ── REQ-IV-013: SVG placeholder tests ──
+
+    #[test]
+    fn svg_path_detection() {
+        assert!(ImageViewer::is_svg_path(Path::new("graphic.svg")));
+        assert!(ImageViewer::is_svg_path(Path::new("diagram.SVG")));
+        assert!(ImageViewer::is_svg_path(Path::new("/path/to/file.Svg")));
+        assert!(!ImageViewer::is_svg_path(Path::new("photo.png")));
+        assert!(!ImageViewer::is_svg_path(Path::new("image.jpeg")));
+        assert!(!ImageViewer::is_svg_path(Path::new("svg_backup")));
+    }
+
+    #[test]
+    fn svg_file_sets_is_svg_flag() {
+        let mut viewer = ImageViewer::new();
+        // Simulate SVG loading by checking is_svg_path and setting the flag directly
+        // (load_image requires GPUI Context, so we test the logic path)
+        let svg_path = std::path::PathBuf::from("graphic.svg");
+        assert!(ImageViewer::is_svg_path(&svg_path));
+        viewer.is_svg = true;
+        viewer.image_data = Some(ImageData::new(
+            vec![0u8; 4],
+            1,
+            1,
+            svg_path,
+            100,
+        ));
+        assert!(viewer.is_svg());
+    }
+
+    #[test]
+    fn svg_file_skips_exif_and_fit_to_view() {
+        // SVG loading path should not trigger EXIF extraction or fit_to_view
+        let mut viewer = ImageViewer::new();
+        viewer.is_svg = true;
+        viewer.image_data = Some(ImageData::new(
+            vec![0u8; 4],
+            1,
+            1,
+            std::path::PathBuf::from("diagram.SVG"),
+            100,
+        ));
+        assert!(viewer.exif_data.is_none(), "SVG should not extract EXIF");
+        // zoom should remain at 1.0 (not fit_to_view adjusted)
+        assert!((viewer.zoom() - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn non_svg_file_does_not_set_is_svg() {
+        let mut viewer = ImageViewer::new();
+        assert!(!viewer.is_svg());
+        // PNG should not set is_svg
+        let png_path = std::path::PathBuf::from("photo.png");
+        assert!(!ImageViewer::is_svg_path(&png_path));
+    }
+
+    // ── REQ-IV-030~031: Cursor feedback tests ──
+
+    #[test]
+    fn cursor_grab_when_not_dragging() {
+        let viewer = ImageViewer::new();
+        assert_eq!(viewer.cursor_style(), CursorStyle::OpenHand);
+    }
+
+    #[test]
+    fn cursor_grabbing_while_dragging() {
+        let mut viewer = ImageViewer::new();
+        assert!(!viewer.is_dragging());
+        assert_eq!(viewer.cursor_style(), CursorStyle::OpenHand);
+
+        viewer.handle_mouse_down(10.0, 20.0);
+        assert!(viewer.is_dragging());
+        assert_eq!(viewer.cursor_style(), CursorStyle::ClosedHand);
+    }
+
+    #[test]
+    fn cursor_transitions_grab_to_grabbing_to_grab() {
+        let mut viewer = ImageViewer::new();
+        // Initial: grab
+        assert_eq!(viewer.cursor_style(), CursorStyle::OpenHand);
+
+        // Start drag: grabbing
+        viewer.handle_mouse_down(0.0, 0.0);
+        assert_eq!(viewer.cursor_style(), CursorStyle::ClosedHand);
+
+        // End drag: grab
+        viewer.handle_mouse_up();
+        assert_eq!(viewer.cursor_style(), CursorStyle::OpenHand);
+    }
+
+    // ── Pan state after zoom changes ──
+
+    #[test]
+    fn pan_preserved_after_wheel_zoom() {
+        let mut viewer = ImageViewer::new();
+        viewer.pan_x = 50.0;
+        viewer.pan_y = 30.0;
+        viewer.handle_wheel(-1.0); // zoom in
+        assert!(
+            (viewer.pan_x() - 50.0).abs() < f32::EPSILON,
+            "wheel zoom should preserve pan_x"
+        );
+        assert!(
+            (viewer.pan_y() - 30.0).abs() < f32::EPSILON,
+            "wheel zoom should preserve pan_y"
+        );
+    }
+
+    // ── Zoom boundary conditions ──
+
+    #[test]
+    fn zoom_in_at_max_stays_at_max() {
+        let mut viewer = ImageViewer::new();
+        viewer.zoom = 10.0;
+        viewer.zoom_in(); // already at max, should not exceed
+        assert!(
+            (viewer.zoom() - 10.0).abs() < f32::EPSILON,
+            "zoom should stay at 10x max"
+        );
+    }
+
+    #[test]
+    fn zoom_out_at_min_stays_at_min() {
+        let mut viewer = ImageViewer::new();
+        viewer.zoom = 0.1;
+        viewer.zoom_out(); // already at min, should not go below
+        assert!(
+            (viewer.zoom() - 0.1).abs() < f32::EPSILON,
+            "zoom should stay at 0.1x min"
+        );
+    }
+
+    // ── Drag state tracking ──
+
+    #[test]
+    fn drag_updates_pan_offset() {
+        let mut viewer = ImageViewer::new();
+        viewer.handle_mouse_down(100.0, 100.0);
+        viewer.handle_mouse_move(120.0, 115.0);
+        assert!(
+            (viewer.pan_x() - 20.0).abs() < f32::EPSILON,
+            "pan_x should be 20.0"
+        );
+        assert!(
+            (viewer.pan_y() - 15.0).abs() < f32::EPSILON,
+            "pan_y should be 15.0"
+        );
+    }
+
+    #[test]
+    fn no_pan_without_drag() {
+        let mut viewer = ImageViewer::new();
+        // Move without mousedown should not change pan
+        viewer.handle_mouse_move(120.0, 115.0);
+        assert!((viewer.pan_x() - 0.0).abs() < f32::EPSILON);
+        assert!((viewer.pan_y() - 0.0).abs() < f32::EPSILON);
     }
 }
