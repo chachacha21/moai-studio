@@ -20,3 +20,5 @@ axum = "0.8"
 dirs = "5"
 # SPEC-V3-016 MS-1: Image decoding (PNG, JPEG, GIF, WebP, BMP, ICO)
 image = "0.25"
+# SPEC-V3-016 MS-2: EXIF metadata extraction (REQ-IV-040~045)
+kamadak-exif = "0.6"

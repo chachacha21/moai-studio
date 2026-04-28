@@ -2,11 +2,16 @@
 //!
 //! SPEC: C-5 Image Surface zoom/pan.
 //! SPEC-V3-016 MS-1: Actual image decoding and rendering (REQ-IV-001~006).
-//! Features: Mouse wheel zoom, click-drag pan, fit-to-view reset.
+//! SPEC-V3-016 MS-2: Zoom toolbar (REQ-IV-020~025) + EXIF panel (REQ-IV-040~045).
+//! Features: Mouse wheel zoom, click-drag pan, fit-to-view reset, EXIF metadata panel.
 
 use crate::design::tokens as tok;
+use crate::viewer::exif::ExifData;
 use crate::viewer::image_data::ImageData;
 use gpui::{Context, IntoElement, ParentElement, Render, Styled, Window, div, px, rgb};
+use gpui::prelude::FluentBuilder;
+
+use std::path::Path;
 
 /// Image viewer state with zoom and pan (REQ-IV-001).
 pub struct ImageViewer {
@@ -25,6 +30,10 @@ pub struct ImageViewer {
     image_data: Option<ImageData>,
     /// Error message if image loading failed (REQ-IV-003).
     error_message: Option<String>,
+    /// EXIF metadata extracted from image file (REQ-IV-040).
+    exif_data: Option<ExifData>,
+    /// Whether EXIF side panel is visible (REQ-IV-045, default: false).
+    show_exif_panel: bool,
 }
 
 impl ImageViewer {
@@ -39,13 +48,21 @@ impl ImageViewer {
             last_mouse_y: 0.0,
             image_data: None,
             error_message: None,
+            exif_data: None,
+            show_exif_panel: false,
         }
     }
 
     /// Load decoded image data (REQ-IV-002, REQ-IV-005).
+    ///
+    /// Also extracts EXIF metadata from the source file (REQ-IV-040).
     pub fn load_image(&mut self, data: ImageData, _cx: &mut Context<Self>) {
         let width = data.width as f32;
         let height = data.height as f32;
+
+        // Extract EXIF metadata from source path (REQ-IV-041)
+        self.exif_data = crate::viewer::exif::extract_exif(Path::new(&data.path));
+
         self.image_data = Some(data);
         self.error_message = None;
         self.reset_view();
@@ -76,6 +93,46 @@ impl ImageViewer {
         self.zoom = 1.0;
         self.pan_x = 0.0;
         self.pan_y = 0.0;
+    }
+
+    // ── Zoom toolbar actions (REQ-IV-020~025) ──
+
+    /// Zoom in by 10%, capped at 10x (REQ-IV-021).
+    pub fn zoom_in(&mut self) {
+        const ZOOM_STEP: f32 = 0.1;
+        const ZOOM_MAX: f32 = 10.0;
+        self.zoom = (self.zoom + ZOOM_STEP).min(ZOOM_MAX);
+    }
+
+    /// Zoom out by 10%, floored at 0.1x (REQ-IV-022).
+    pub fn zoom_out(&mut self) {
+        const ZOOM_STEP: f32 = 0.1;
+        const ZOOM_MIN: f32 = 0.1;
+        self.zoom = (self.zoom - ZOOM_STEP).max(ZOOM_MIN);
+    }
+
+    /// Fit image to view bounds, resets pan (REQ-IV-023).
+    pub fn fit_to_view_action(&mut self) {
+        if let Some(ref data) = self.image_data {
+            self.fit_to_view(data.width as f32, data.height as f32);
+        }
+    }
+
+    /// Set zoom to 100% (actual size), resets pan (REQ-IV-024).
+    pub fn zoom_actual_size(&mut self) {
+        self.zoom = 1.0;
+        self.pan_x = 0.0;
+        self.pan_y = 0.0;
+    }
+
+    /// Toggle EXIF panel visibility (REQ-IV-045).
+    pub fn toggle_exif_panel(&mut self) {
+        self.show_exif_panel = !self.show_exif_panel;
+    }
+
+    /// Whether the EXIF panel is currently visible.
+    pub fn is_exif_panel_visible(&self) -> bool {
+        self.show_exif_panel
     }
 
     /// Handle mouse wheel zoom.
@@ -116,6 +173,21 @@ impl ImageViewer {
             self.last_mouse_y = y;
         }
     }
+
+    /// Get current zoom level (for testing).
+    pub fn zoom(&self) -> f32 {
+        self.zoom
+    }
+
+    /// Get current pan X offset (for testing).
+    pub fn pan_x(&self) -> f32 {
+        self.pan_x
+    }
+
+    /// Get current pan Y offset (for testing).
+    pub fn pan_y(&self) -> f32 {
+        self.pan_y
+    }
 }
 
 impl Default for ImageViewer {
@@ -123,6 +195,11 @@ impl Default for ImageViewer {
         Self::new()
     }
 }
+
+// @MX:ANCHOR: [AUTO] image-viewer-render
+// @MX:REASON: [AUTO] REQ-IV-005, REQ-IV-020~025, REQ-IV-040~045.
+//   Render is the primary UI entry point for image viewing with zoom toolbar and EXIF panel.
+//   fan_in >= 3: GPUI render loop, unit tests, integration tests.
 
 impl Render for ImageViewer {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
@@ -142,70 +219,86 @@ impl Render for ImageViewer {
         let img_h = data.height as f32;
         let display_w = img_w * self.zoom;
         let display_h = img_h * self.zoom;
+        let show_exif = self.show_exif_panel && self.exif_data.is_some();
 
         div()
             .w_full()
             .h_full()
             .bg(rgb(tok::BG_PANEL))
             .flex()
-            .items_center()
-            .justify_center()
+            .flex_row()
             .overflow_hidden()
             .relative()
-            // Image container (REQ-IV-005)
+            // Main image area (shrinks if EXIF panel is visible)
             .child(
                 div()
+                    .flex_grow()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .overflow_hidden()
                     .relative()
-                    .w(px(display_w))
-                    .h(px(display_h))
-                    .bg(rgb(tok::BG_SURFACE))
-                    .border_1()
-                    .border_color(rgb(tok::BORDER_SUBTLE))
-                    // Apply pan offset
-                    .ml(px(self.pan_x))
-                    .mt(px(self.pan_y))
-                    // TODO: Render actual image pixels (REQ-IV-005)
-                    // For now, show dimensions as placeholder
+                    // Image container (REQ-IV-005)
                     .child(
                         div()
-                            .absolute()
-                            .inset_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_color(rgb(tok::FG_SECONDARY))
-                            .text_sm()
-                            .child(format!("{} x {} pixels", data.width, data.height)),
+                            .relative()
+                            .w(px(display_w))
+                            .h(px(display_h))
+                            .bg(rgb(tok::BG_SURFACE))
+                            .border_1()
+                            .border_color(rgb(tok::BORDER_SUBTLE))
+                            // Apply pan offset
+                            .ml(px(self.pan_x))
+                            .mt(px(self.pan_y))
+                            // TODO: Render actual image pixels (REQ-IV-005)
+                            // For now, show dimensions as placeholder
+                            .child(
+                                div()
+                                    .absolute()
+                                    .inset_0()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .text_color(rgb(tok::FG_SECONDARY))
+                                    .text_sm()
+                                    .child(format!("{} x {} pixels", data.width, data.height)),
+                            )
+                            // Zoom info overlay (REQ-IV-025)
+                            .child(
+                                div()
+                                    .absolute()
+                                    .top_4()
+                                    .left_4()
+                                    .px(px(8.))
+                                    .py(px(4.))
+                                    .rounded_md()
+                                    .bg(rgb(0x00000080))
+                                    .text_color(rgb(0xFFFFFF))
+                                    .text_sm()
+                                    .child(format!("Zoom: {:.0}%", self.zoom * 100.0)),
+                            )
+                            // Controls hint
+                            .child(
+                                div()
+                                    .absolute()
+                                    .bottom_4()
+                                    .right_4()
+                                    .px(px(8.))
+                                    .py(px(4.))
+                                    .rounded_md()
+                                    .bg(rgb(0x00000080))
+                                    .text_color(rgb(0xFFFFFF))
+                                    .text_xs()
+                                    .child("Scroll to zoom - Drag to pan"),
+                            ),
                     )
-                    // Zoom info overlay (REQ-IV-025)
-                    .child(
-                        div()
-                            .absolute()
-                            .top_4()
-                            .left_4()
-                            .px(px(8.))
-                            .py(px(4.))
-                            .rounded_md()
-                            .bg(rgb(0x00000080))
-                            .text_color(rgb(0xFFFFFF))
-                            .text_sm()
-                            .child(format!("Zoom: {:.0}%", self.zoom * 100.0)),
-                    )
-                    // Controls hint
-                    .child(
-                        div()
-                            .absolute()
-                            .bottom_4()
-                            .right_4()
-                            .px(px(8.))
-                            .py(px(4.))
-                            .rounded_md()
-                            .bg(rgb(0x00000080))
-                            .text_color(rgb(0xFFFFFF))
-                            .text_xs()
-                            .child("Scroll to zoom • Drag to pan"),
-                    ),
+                    // Zoom toolbar (REQ-IV-020~025)
+                    .child(self.render_zoom_toolbar()),
             )
+            // EXIF side panel (REQ-IV-042~045)
+            .when(show_exif, |el: gpui::Div| {
+                el.child(self.render_exif_panel())
+            })
             .into_any_element()
     }
 }
@@ -231,5 +324,268 @@ impl ImageViewer {
             .text_lg()
             .text_color(rgb(tok::FG_SECONDARY))
             .child(format!("Failed to load image: {}", message))
+    }
+
+    /// Render zoom toolbar with 4 buttons + EXIF toggle (REQ-IV-020~025).
+    fn render_zoom_toolbar(&self) -> gpui::Div {
+        div()
+            .absolute()
+            .bottom_4()
+            .left_1_2()
+            .ml(px(-140.)) // Center toolbar (~280px wide / 2)
+            .flex()
+            .flex_row()
+            .gap(px(4.))
+            .px(px(8.))
+            .py(px(4.))
+            .rounded_md()
+            .bg(rgb(0x000000CC))
+            .text_color(rgb(0xFFFFFF))
+            .text_xs()
+            // Zoom-in button (REQ-IV-021)
+            .child(
+                div()
+                    .px(px(8.))
+                    .py(px(4.))
+                    .rounded_sm()
+                    .bg(rgb(tok::brand::PRIMARY_DARK))
+                    .cursor_pointer()
+                    .child("+"),
+            )
+            // Zoom-out button (REQ-IV-022)
+            .child(
+                div()
+                    .px(px(8.))
+                    .py(px(4.))
+                    .rounded_sm()
+                    .bg(rgb(tok::brand::PRIMARY_DARK))
+                    .cursor_pointer()
+                    .child("-"),
+            )
+            // Fit-to-view button (REQ-IV-023)
+            .child(
+                div()
+                    .px(px(8.))
+                    .py(px(4.))
+                    .rounded_sm()
+                    .bg(rgb(tok::brand::PRIMARY_DARK))
+                    .cursor_pointer()
+                    .child("Fit"),
+            )
+            // 100% / Actual size button (REQ-IV-024)
+            .child(
+                div()
+                    .px(px(8.))
+                    .py(px(4.))
+                    .rounded_sm()
+                    .bg(rgb(tok::brand::PRIMARY_DARK))
+                    .cursor_pointer()
+                    .child("100%"),
+            )
+            // EXIF toggle button (REQ-IV-045)
+            .child(
+                div()
+                    .px(px(8.))
+                    .py(px(4.))
+                    .rounded_sm()
+                    .bg(if self.show_exif_panel {
+                        rgb(tok::brand::PRIMARY_DARK_HOVER)
+                    } else {
+                        rgb(tok::neutral::N700)
+                    })
+                    .cursor_pointer()
+                    .child("EXIF"),
+            )
+    }
+
+    /// Render EXIF metadata side panel (REQ-IV-042~044).
+    fn render_exif_panel(&self) -> gpui::Div {
+        let exif = match &self.exif_data {
+            Some(e) => e,
+            None => return div(),
+        };
+
+        let mut rows = Vec::new();
+
+        if let Some(ref v) = exif.camera_make {
+            rows.push(self.render_exif_row("Make", v));
+        }
+        if let Some(ref v) = exif.camera_model {
+            rows.push(self.render_exif_row("Model", v));
+        }
+        if let Some(ref v) = exif.datetime_original {
+            rows.push(self.render_exif_row("Date", v));
+        }
+        if let Some(ref v) = exif.exposure_time {
+            rows.push(self.render_exif_row("Exposure", v));
+        }
+        if let Some(ref v) = exif.f_number {
+            rows.push(self.render_exif_row("Aperture", v));
+        }
+        if let Some(v) = exif.iso {
+            rows.push(self.render_exif_row("ISO", &v.to_string()));
+        }
+        if let Some(ref v) = exif.focal_length {
+            rows.push(self.render_exif_row("Focal Length", v));
+        }
+        if let Some(v) = exif.image_width {
+            rows.push(self.render_exif_row("Width", &format!("{} px", v)));
+        }
+        if let Some(v) = exif.image_height {
+            rows.push(self.render_exif_row("Height", &format!("{} px", v)));
+        }
+
+        div()
+            .w(px(280.))
+            .h_full()
+            .bg(rgb(tok::BG_PANEL))
+            .border_l_1()
+            .border_color(rgb(tok::BORDER_SUBTLE))
+            .flex()
+            .flex_col()
+            .pt(px(12.))
+            .px(px(12.))
+            .overflow_hidden()
+            // Panel header
+            .child(
+                div()
+                    .pb(px(8.))
+                    .border_b_1()
+                    .border_color(rgb(tok::BORDER_SUBTLE))
+                    .text_sm()
+                    .text_color(rgb(tok::FG_PRIMARY))
+                    .child("EXIF Metadata"),
+            )
+            // EXIF rows
+            .children(rows)
+    }
+
+    /// Render a single EXIF label-value row.
+    fn render_exif_row(&self, label: &str, value: &str) -> gpui::Div {
+        div()
+            .flex()
+            .flex_row()
+            .justify_between()
+            .py(px(6.))
+            .border_b_1()
+            .border_color(rgb(tok::BORDER_SUBTLE))
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(tok::FG_SECONDARY))
+                    .child(label.to_string()),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(tok::FG_PRIMARY))
+                    .child(value.to_string()),
+            )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── REQ-IV-020~025: Zoom toolbar tests ──
+
+    #[test]
+    fn zoom_in_increments_by_10_percent() {
+        let mut viewer = ImageViewer::new();
+        assert!((viewer.zoom() - 1.0).abs() < f32::EPSILON);
+        viewer.zoom_in();
+        assert!((viewer.zoom() - 1.1).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn zoom_out_decrements_by_10_percent() {
+        let mut viewer = ImageViewer::new();
+        viewer.zoom_in(); // 1.0 -> 1.1
+        viewer.zoom_out(); // 1.1 -> 1.0
+        assert!((viewer.zoom() - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn zoom_capped_at_10x() {
+        let mut viewer = ImageViewer::new();
+        viewer.zoom = 9.95;
+        viewer.zoom_in(); // 9.95 + 0.1 = 10.05 -> capped at 10.0
+        assert!((viewer.zoom() - 10.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn zoom_floored_at_0_1x() {
+        let mut viewer = ImageViewer::new();
+        viewer.zoom = 0.15;
+        viewer.zoom_out(); // 0.15 - 0.1 = 0.05 -> floored at 0.1
+        assert!((viewer.zoom() - 0.1).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn fit_to_view_resets_pan() {
+        let mut viewer = ImageViewer::new();
+        // Simulate some pan offset
+        viewer.pan_x = 50.0;
+        viewer.pan_y = 30.0;
+
+        // Load image data so fit_to_view_action has dimensions
+        let pixels = vec![0u8; 100 * 100 * 4];
+        let data = ImageData::new(
+            pixels,
+            100,
+            100,
+            std::path::PathBuf::from("test.png"),
+            1024,
+        );
+        viewer.image_data = Some(data);
+
+        viewer.fit_to_view_action();
+        assert!(
+            (viewer.pan_x() - 0.0).abs() < f32::EPSILON,
+            "fit_to_view should reset pan_x"
+        );
+        assert!(
+            (viewer.pan_y() - 0.0).abs() < f32::EPSILON,
+            "fit_to_view should reset pan_y"
+        );
+    }
+
+    #[test]
+    fn zoom_100_percent_resets_pan() {
+        let mut viewer = ImageViewer::new();
+        viewer.pan_x = 100.0;
+        viewer.pan_y = 200.0;
+        viewer.zoom = 2.5;
+
+        viewer.zoom_actual_size();
+
+        assert!((viewer.zoom() - 1.0).abs() < f32::EPSILON, "zoom should be 1.0");
+        assert!(
+            (viewer.pan_x() - 0.0).abs() < f32::EPSILON,
+            "100% should reset pan_x"
+        );
+        assert!(
+            (viewer.pan_y() - 0.0).abs() < f32::EPSILON,
+            "100% should reset pan_y"
+        );
+    }
+
+    // ── REQ-IV-045: EXIF panel toggle tests ──
+
+    #[test]
+    fn exif_panel_default_hidden() {
+        let viewer = ImageViewer::new();
+        assert!(!viewer.is_exif_panel_visible(), "EXIF panel should be hidden by default");
+    }
+
+    #[test]
+    fn exif_panel_toggle_flips_visibility() {
+        let mut viewer = ImageViewer::new();
+        assert!(!viewer.is_exif_panel_visible());
+        viewer.toggle_exif_panel();
+        assert!(viewer.is_exif_panel_visible(), "first toggle should show panel");
+        viewer.toggle_exif_panel();
+        assert!(!viewer.is_exif_panel_visible(), "second toggle should hide panel");
     }
 }

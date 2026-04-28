@@ -12,6 +12,8 @@ pub mod code;
 pub mod image;
 // SPEC-V3-016 MS-1: Image decoding module
 pub mod image_data;
+// SPEC-V3-016 MS-2: EXIF metadata extraction (REQ-IV-040~045)
+pub mod exif;
 // SPEC-V3-006 MS-3a: Find/Replace (CodeViewer + MarkdownViewer 공통)
 // SPEC-V3-006 MS-3b: SearchMode::Regex 추가
 pub mod find_replace;

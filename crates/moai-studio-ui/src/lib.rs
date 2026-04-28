@@ -42,6 +42,8 @@ pub mod git;
 // SPEC-V3-007 MS-1: WebView module (wry backend + abstraction)
 #[cfg(feature = "web")]
 pub mod web;
+// SPEC-V3-017 MS-2: TRUST 5 Quality Dashboard (RadarChartView + QualityGateView)
+pub mod quality;
 
 use design::tokens::{self as tok, traffic};
 use gpui::{
