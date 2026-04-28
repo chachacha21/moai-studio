@@ -9,8 +9,9 @@ pub mod clipboard;
 pub mod input;
 
 use crate::design::tokens::{self as tok, ide_accent};
-use gpui::{Context, IntoElement, Keystroke, ParentElement, Render, Styled, Window, div, px, rgb};
+use gpui::{Context, EventEmitter, IntoElement, Keystroke, ParentElement, Render, Styled, Window, div, px, rgb};
 use moai_studio_terminal::link::ClickAction;
+use std::path::PathBuf;
 
 // ============================================================
 // 폰트 메트릭 — pixel_to_cell 계산 기준
@@ -70,6 +71,21 @@ impl Selection {
 }
 
 // ============================================================
+// TerminalClickEvent — Emitted when terminal links are clicked
+// ============================================================
+
+/// Emitted by TerminalSurface when a link is clicked.
+/// RootView subscribes to these events to dispatch actions.
+pub enum TerminalClickEvent {
+    /// Open a file in the code viewer
+    OpenFile { path: PathBuf, line: Option<u32>, col: Option<u32> },
+    /// Open a URL in the browser
+    OpenUrl(String),
+    /// Open a SPEC panel for the given spec_id
+    OpenSpec(String),
+}
+
+// ============================================================
 // TerminalState — T3 완료 후 RenderSnapshot 으로 교체 예정
 // ============================================================
 
@@ -88,10 +104,6 @@ pub struct TerminalState {
     /// 총 출력 바이트 수 (AC-T-9 검증용)
     pub total_bytes: usize,
 }
-
-// ============================================================
-// TerminalSurface — GPUI 컴포넌트
-// ============================================================
 
 /// GPUI TerminalSurface 컴포넌트.
 ///
@@ -278,15 +290,25 @@ impl TerminalSurface {
                         col = ?col,
                         "ClickAction::OpenCodeViewer"
                     );
+                    // Emit event for RootView to handle
+                    cx.emit(TerminalClickEvent::OpenFile {
+                        path,
+                        line,
+                        col,
+                    });
                 }
                 ClickAction::OpenUrl(moai_studio_terminal::link::OpenUrl { url }) => {
                     // AC-LK-5: open URL in default browser
                     cx.open_url(&url);
                     tracing::debug!(url = %url, "Opened URL in browser");
+                    // Emit event for RootView to handle
+                    cx.emit(TerminalClickEvent::OpenUrl(url.clone()));
                 }
                 ClickAction::OpenSpec(moai_studio_terminal::link::OpenSpec { spec_id }) => {
                     // B-4 feature: log SPEC ID click (panel opening deferred)
                     tracing::info!(spec_id = %spec_id, "ClickAction::OpenSpec");
+                    // Emit event for RootView to handle
+                    cx.emit(TerminalClickEvent::OpenSpec(spec_id.to_string()));
                 }
             }
         }
@@ -298,6 +320,8 @@ impl Default for TerminalSurface {
         Self::new()
     }
 }
+
+impl EventEmitter<TerminalClickEvent> for TerminalSurface {}
 
 // ============================================================
 // GPUI Render 구현
