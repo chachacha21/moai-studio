@@ -85,11 +85,9 @@ pub fn detect_local_urls(stdout_chunk: &str) -> Vec<DetectedUrl> {
 #[derive(Debug)]
 pub struct UrlDetectionDebouncer {
     /// Recently seen URLs with their first seen timestamp
-    seen_urls: HashSet<String>,
+    seen_urls: Vec<(String, Instant)>,
     /// User-dismissed URLs with their dismissal timestamp
-    dismissed_urls: HashSet<(String, Instant)>,
-    /// When to clean up expired dismissed URLs
-    next_cleanup: Option<Instant>,
+    dismissed_urls: Vec<(String, Instant)>,
     /// Deduplication window (5 seconds, REQ-WB-035)
     dedupe_window: Duration,
     /// Silence duration for dismissed URLs (30 minutes, REQ-WB-035)
@@ -104,9 +102,8 @@ impl UrlDetectionDebouncer {
     /// - dismissed_silence: 30 minutes
     pub fn new() -> Self {
         Self {
-            seen_urls: HashSet::new(),
-            dismissed_urls: HashSet::new(),
-            next_cleanup: None,
+            seen_urls: Vec::new(),
+            dismissed_urls: Vec::new(),
             dedupe_window: Duration::from_secs(5),
             dismissed_silence: Duration::from_secs(30 * 60), // 30 minutes
         }
@@ -115,9 +112,8 @@ impl UrlDetectionDebouncer {
     /// Create a new debouncer with custom timeouts
     pub fn with_timeouts(dedupe_window: Duration, dismissed_silence: Duration) -> Self {
         Self {
-            seen_urls: HashSet::new(),
-            dismissed_urls: HashSet::new(),
-            next_cleanup: None,
+            seen_urls: Vec::new(),
+            dismissed_urls: Vec::new(),
             dedupe_window,
             dismissed_silence,
         }
@@ -136,8 +132,8 @@ impl UrlDetectionDebouncer {
         let now = Instant::now();
         let mut new_urls = Vec::new();
 
-        // Clean up expired dismissed URLs periodically
-        self.cleanup_expired(now);
+        // Purge expired seen entries and dismissed entries
+        self.purge_expired(now);
 
         for detected in urls {
             // Check if dismissed (REQ-WB-035)
@@ -145,13 +141,13 @@ impl UrlDetectionDebouncer {
                 continue;
             }
 
-            // Check if seen recently (REQ-WB-035)
-            if self.seen_urls.contains(&detected.url) {
+            // Check if seen within dedupe_window (REQ-WB-035)
+            if self.is_seen_recently(&detected.url, now) {
                 continue;
             }
 
             // New URL: mark as seen and emit
-            self.seen_urls.insert(detected.url.clone());
+            self.seen_urls.push((detected.url.clone(), now));
             new_urls.push(detected);
         }
 
@@ -166,45 +162,32 @@ impl UrlDetectionDebouncer {
         let now = Instant::now();
 
         // Remove from seen_urls to allow re-emission after silence period
-        self.seen_urls.remove(&url);
+        self.seen_urls.retain(|(u, _)| u != &url);
 
         // Add to dismissed set with timestamp
-        self.dismissed_urls.insert((url, now));
-
-        // Schedule cleanup if not already scheduled
-        if self.next_cleanup.is_none() {
-            self.next_cleanup = Some(now + self.dismissed_silence);
-        }
+        self.dismissed_urls.push((url, now));
     }
 
     /// Check if a URL is currently dismissed
     fn is_dismissed(&self, url: &str, now: Instant) -> bool {
-        self.dismissed_urls
-            .iter()
-            .any(|(dismissed_url, timestamp)| {
-                dismissed_url == url && now.saturating_duration_since(*timestamp) < self.dismissed_silence
-            })
+        self.dismissed_urls.iter().any(|(dismissed_url, timestamp)| {
+            dismissed_url == url && now.saturating_duration_since(*timestamp) < self.dismissed_silence
+        })
     }
 
-    /// Clean up expired dismissed URLs
-    fn cleanup_expired(&mut self, now: Instant) {
-        // Check if it's time to cleanup
-        if let Some(next_cleanup) = self.next_cleanup {
-            if now < next_cleanup {
-                return;
-            }
-        }
+    /// Check if a URL was seen within the dedupe_window
+    fn is_seen_recently(&self, url: &str, now: Instant) -> bool {
+        self.seen_urls.iter().any(|(seen_url, timestamp)| {
+            seen_url == url && now.saturating_duration_since(*timestamp) < self.dedupe_window
+        })
+    }
 
-        // Remove expired entries
+    /// Purge expired seen and dismissed entries
+    fn purge_expired(&mut self, now: Instant) {
+        self.seen_urls
+            .retain(|(_, ts)| now.saturating_duration_since(*ts) < self.dedupe_window);
         self.dismissed_urls
-            .retain(|(_, timestamp)| now.saturating_duration_since(*timestamp) < self.dismissed_silence);
-
-        // Schedule next cleanup
-        self.next_cleanup = if self.dismissed_urls.is_empty() {
-            None
-        } else {
-            Some(now + self.dismissed_silence)
-        };
+            .retain(|(_, ts)| now.saturating_duration_since(*ts) < self.dismissed_silence);
     }
 
     /// Reset all seen URLs (useful for testing)
