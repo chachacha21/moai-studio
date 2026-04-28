@@ -47,6 +47,9 @@ pub mod bridge;
 pub mod url_detector;
 
 #[cfg(feature = "web")]
+pub mod config;
+
+#[cfg(feature = "web")]
 pub use history::NavigationHistory;
 
 #[cfg(feature = "web")]
@@ -54,6 +57,9 @@ pub use bridge::{BridgeKind, BridgeMessage, BridgeRouter};
 
 #[cfg(feature = "web")]
 pub use url_detector::{DetectedUrl, UrlDetectionDebouncer, detect_local_urls};
+
+#[cfg(feature = "web")]
+pub use config::WebConfig;
 
 #[cfg(feature = "web")]
 pub use surface::WebViewSurface;
