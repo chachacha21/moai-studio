@@ -736,6 +736,27 @@ impl RootView {
                 // AC-MV-11: binary 파일은 viewer 마운트 없이 무시
                 info!("handle_open_file: binary 파일 무시 ({:?})", ev.path);
             }
+            // SPEC-V3-016 MS-1: Image viewer routing (REQ-IV-012)
+            EventResolution::Image => {
+                let path = ev.path.clone();
+                let entity = cx.new(|_cx| viewer::image::ImageViewer::new());
+                // Load image using decode_image (REQ-IV-002)
+                match viewer::image_data::decode_image(&path) {
+                    Ok(data) => {
+                        entity.update(cx, |viewer: &mut viewer::image::ImageViewer, cx| {
+                            viewer.load_image(data, cx);
+                        });
+                    }
+                    Err(e) => {
+                        entity.update(cx, |viewer: &mut viewer::image::ImageViewer, cx| {
+                            viewer.set_error(e.to_string(), cx);
+                        });
+                    }
+                }
+                self.leaf_payloads
+                    .insert(leaf_id, LeafKind::Image(entity));
+                cx.notify();
+            }
             EventResolution::Open(SurfaceHint::Markdown) => {
                 let path = ev.path.clone();
                 let entity = cx.new(|_cx| MarkdownViewer::new(path.clone()));

@@ -18,3 +18,5 @@ thiserror = "2"
 axum = "0.8"
 # SPEC-V3-013 MS-3: UserSettings 영속화 경로 (platform-appropriate config dir)
 dirs = "5"
+# SPEC-V3-016 MS-1: Image decoding (PNG, JPEG, GIF, WebP, BMP, ICO)
+image = "0.25"

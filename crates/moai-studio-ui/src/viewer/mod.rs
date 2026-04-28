@@ -10,6 +10,8 @@
 pub mod code;
 // C-5: Image Viewer with zoom/pan
 pub mod image;
+// SPEC-V3-016 MS-1: Image decoding module
+pub mod image_data;
 // SPEC-V3-006 MS-3a: Find/Replace (CodeViewer + MarkdownViewer 공통)
 // SPEC-V3-006 MS-3b: SearchMode::Regex 추가
 pub mod find_replace;
@@ -24,7 +26,12 @@ pub mod scroll;
 // @MX:ANCHOR: [AUTO] leaf-kind-dispatch
 // @MX:REASON: [AUTO] SPEC-V3-006 RG-MV-?. LeafKind 는 4-surface 다형성 진입점이다.
 //   fan_in >= 3: render_pane_tree<LeafKind>, RootView::handle_open_file,
-//   integration 테스트, MS-2 CodeViewer 배선.
+//   integration 테스트, MS-2 CodeViewer 배선, SPEC-V3-016 MS-1 Image 라우팅.
+
+// @MX:ANCHOR: [AUTO] resolve-event-function
+// @MX:REASON: [AUTO] REQ-IV-011. resolve_event는 파일 확장자 라우팅 진입점이다.
+//   fan_in >= 3: RootView::handle_open_file, unit tests (13 tests),
+//   SPEC-V3-016 MS-1 image routing (8 formats).
 
 use crate::design::tokens as tok;
 use code::CodeViewer;
@@ -290,12 +297,19 @@ pub struct OpenFileEvent {
 // handle_open_file 은 lib.rs 의 RootView impl block 에 추가된다.
 // viewer::handle_open_file_impl 이 실제 로직을 가지고, lib.rs 에서 위임한다.
 
+// @MX:ANCHOR: [AUTO] resolve-event-function
+// @MX:REASON: [AUTO] REQ-IV-011. resolve_event는 파일 확장자 라우팅 진입점이다.
+//   fan_in >= 3: RootView::handle_open_file, unit tests (13 tests),
+//   SPEC-V3-016 MS-1 image routing (8 formats).
+
 /// OpenFileEvent 를 받아 viewer entity 를 생성하고 LeafKind 를 반환한다.
 ///
 /// GPUI `Context<RootView>` 가 필요한 entity 생성은 호출자(lib.rs) 에서 수행한다.
 /// 여기서는 라우팅 + binary 체크 + error 처리 로직만 담당한다.
+///
+/// SPEC-V3-016 MS-1: 이미지 확장자는 EventResolution::Image 로 라우팅 (REQ-IV-011).
 pub fn resolve_event(ev: &OpenFileEvent) -> EventResolution {
-    // 1. binary 파일 확인 (확장자 기반 빠른 체크 — 실제 read 는 async에서)
+    // 1. 이미지 파일 확인 (REQ-IV-011, REQ-IV-013)
     let ext = ev
         .path
         .extension()
@@ -303,33 +317,24 @@ pub fn resolve_event(ev: &OpenFileEvent) -> EventResolution {
         .unwrap_or("")
         .to_lowercase();
 
-    // 명백한 binary 확장자 조기 거부
+    // 이미지 확장자는 Image viewer 로 라우팅 (REQ-IV-011)
     if matches!(
         ext.as_str(),
-        "png"
-            | "jpg"
-            | "jpeg"
-            | "gif"
-            | "bmp"
-            | "ico"
-            | "svg"
-            | "pdf"
-            | "zip"
-            | "tar"
-            | "gz"
-            | "7z"
-            | "rar"
-            | "exe"
-            | "dll"
-            | "so"
-            | "dylib"
-            | "bin"
-            | "wasm"
+        "png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "ico" | "svg"
+    ) {
+        return EventResolution::Image;
+    }
+
+    // 2. 기타 명백한 binary 확장자 조기 거부
+    if matches!(
+        ext.as_str(),
+        "pdf" | "zip" | "tar" | "gz" | "7z" | "rar" | "exe" | "dll" | "so"
+            | "dylib" | "bin" | "wasm"
     ) {
         return EventResolution::Binary;
     }
 
-    // 2. surface 결정
+    // 3. surface 결정
     let surface = ev
         .surface_hint
         .clone()
@@ -338,13 +343,15 @@ pub fn resolve_event(ev: &OpenFileEvent) -> EventResolution {
     EventResolution::Open(surface)
 }
 
-/// `resolve_event` 의 결과 종류.
+/// `resolve_event` 의 결과 종류 (REQ-IV-010).
 #[derive(Debug, PartialEq, Eq)]
 pub enum EventResolution {
     /// viewer 를 열어야 한다
     Open(SurfaceHint),
     /// binary 파일 — viewer 열지 않음
     Binary,
+    /// SPEC-V3-016 MS-1: Image viewer (REQ-IV-010)
+    Image,
 }
 
 // ============================================================
@@ -474,11 +481,12 @@ mod tests {
 
     #[test]
     fn resolve_event_png_extension_is_binary() {
+        // SPEC-V3-016 MS-1: PNG now routes to Image, not Binary (REQ-IV-011)
         let ev = OpenFileEvent {
             path: PathBuf::from("image.png"),
             surface_hint: None,
         };
-        assert_eq!(resolve_event(&ev), EventResolution::Binary);
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
     }
 
     #[test]
@@ -497,6 +505,81 @@ mod tests {
             surface_hint: None,
         };
         assert_eq!(resolve_event(&ev), EventResolution::Open(SurfaceHint::Code));
+    }
+
+    // ── SPEC-V3-016 MS-1: Image routing tests (AC-IV-1, AC-IV-4) ──
+
+    #[test]
+    fn resolve_event_png_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("screenshot.png"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_jpg_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("photo.jpg"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_jpeg_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("photo.jpeg"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_gif_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("animation.gif"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_webp_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("photo.webp"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_bmp_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("bitmap.bmp"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_ico_extension_routes_to_image() {
+        let ev = OpenFileEvent {
+            path: PathBuf::from("icon.ico"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
+    }
+
+    #[test]
+    fn resolve_event_svg_extension_routes_to_image() {
+        // SVG routes to ImageViewer but shows "not yet supported" placeholder (REQ-IV-013)
+        let ev = OpenFileEvent {
+            path: PathBuf::from("graphic.svg"),
+            surface_hint: None,
+        };
+        assert_eq!(resolve_event(&ev), EventResolution::Image);
     }
 
     // ── T8: LeafKind GPUI entity smoke (TestAppContext) ──
